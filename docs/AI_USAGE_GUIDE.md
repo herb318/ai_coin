@@ -90,7 +90,35 @@ Observed local run behavior:
 4. Before public push, run:
    - `python3 scripts/sanitize_for_git_open.py --root .`
 
-## 6) Common Failure Cause
+## 6) Continuous Operator Loop (Recommended)
+
+Run continuously in background:
+
+```bash
+cd /Users/j/Desktop/작업/ai_coin
+nohup python3 scripts/run_operator_loop.py --interval-seconds 120 --include-status-agent > runtime/operator_loop.out 2>&1 &
+```
+
+Check loop status:
+
+```bash
+cat runtime/operator_loop_state.json
+tail -n 20 runtime/operator_loop.log
+```
+
+Stop loop cleanly:
+
+```bash
+touch runtime/STOP_OPERATOR_LOOP
+```
+
+Immediate single-cycle check:
+
+```bash
+python3 scripts/run_operator_loop.py --once
+```
+
+## 7) Common Failure Cause
 
 If production checks fail with:
 

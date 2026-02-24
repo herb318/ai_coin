@@ -105,6 +105,12 @@ python3 decentralized_ai_network_demo.py --mode qa --production-checks
 Practical post-boot usage and network-AI example scenarios:
 - [AI Usage Guide](docs/AI_USAGE_GUIDE.md)
 
+Continuous loop operator (runs QA+demo repeatedly):
+
+```bash
+nohup python3 scripts/run_operator_loop.py --interval-seconds 120 --include-status-agent > runtime/operator_loop.out 2>&1 &
+```
+
 ## Final Launch Sequence
 
 1. Arm sentinel (owner only):
