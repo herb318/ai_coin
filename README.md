@@ -13,6 +13,7 @@ Verification details:
 - [Codex Automation Verification](docs/CODEX_AUTOMATION_VERIFICATION.md)
 - [Network Status](docs/NETWORK_STATUS.md)
 - [Cross-Platform Release](docs/CROSS_PLATFORM_RELEASE.md)
+- [AI Usage Guide](docs/AI_USAGE_GUIDE.md)
 
 ## What This Project Is
 
@@ -100,6 +101,9 @@ Run production checks:
 ```bash
 python3 decentralized_ai_network_demo.py --mode qa --production-checks
 ```
+
+Practical post-boot usage and network-AI example scenarios:
+- [AI Usage Guide](docs/AI_USAGE_GUIDE.md)
 
 ## Final Launch Sequence
 
