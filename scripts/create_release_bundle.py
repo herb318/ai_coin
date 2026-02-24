@@ -12,10 +12,12 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 INCLUDED_DOCS = [
     "README.md",
+    "SECURITY.md",
     "LICENSE",
     ".env.example",
     "docs/LAUNCH_AND_GOVERNANCE.md",
     "docs/REWARD_MECHANISM.md",
+    "docs/SUPPLY_CHAIN_VERIFICATION.md",
 ]
 
 

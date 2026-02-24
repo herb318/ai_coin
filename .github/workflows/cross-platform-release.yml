@@ -69,14 +69,42 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
+      - name: Collect release archives
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f -name "dpuin-*.zip" -exec cp {} release-assets/ \;
+          ls -la release-assets
+
+      - name: Generate checksum manifest
+        run: |
+          cd release-assets
+          sha256sum dpuin-*.zip > SHA256SUMS
+          sha256sum -c SHA256SUMS
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: "v2.4.1"
+
+      - name: Keyless-sign checksums and release archives
+        run: |
+          cd release-assets
+          for file in SHA256SUMS dpuin-*.zip; do
+            cosign sign-blob --yes \
+              --output-signature "${file}.sig" \
+              --output-certificate "${file}.pem" \
+              "${file}"
+          done
+
       - name: Publish GitHub release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*.zip
+          files: release-assets/*
           generate_release_notes: true

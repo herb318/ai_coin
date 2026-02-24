@@ -17,6 +17,8 @@ Verification details:
 - [Cross-Platform Release](docs/CROSS_PLATFORM_RELEASE.md)
 - [AI Usage Guide](docs/AI_USAGE_GUIDE.md)
 - [Docker Automation](docs/DOCKER_AUTOMATION.md)
+- [Supply Chain Verification](docs/SUPPLY_CHAIN_VERIFICATION.md)
+- [Security Policy](SECURITY.md)
 
 ## What This Project Is
 
@@ -188,12 +190,20 @@ Outputs:
 - `dpuin-windows.zip`
 - `dpuin-linux.zip`
 - `dpuin-macos.zip`
+- `SHA256SUMS` (+ `.sig`, `.pem`)
+- `<artifact>.sig` + `<artifact>.pem` for each zip (Sigstore keyless)
 
 Trigger release asset upload by pushing a version tag:
 
 ```bash
 git tag v0.1.0
 git push origin v0.1.0
+```
+
+Verify downloaded release artifacts:
+
+```bash
+python3 scripts/verify_release_artifacts.py --assets-dir <download-dir> --require-cosign
 ```
 
 ## Status View (Git-Friendly)

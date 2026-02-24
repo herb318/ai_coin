@@ -15,6 +15,12 @@ For each platform, the workflow creates:
 
 - `dpuin-<platform>.zip`
 
+For signed release tags (`v*`), the workflow also creates:
+
+- `SHA256SUMS`
+- `SHA256SUMS.sig`, `SHA256SUMS.pem`
+- `dpuin-<platform>.zip.sig`, `dpuin-<platform>.zip.pem`
+
 Each zip includes:
 
 - platform binary (`dpuin` or `dpuin.exe`)
@@ -29,7 +35,11 @@ Each zip includes:
 - `push` to `main`
 - manual `workflow_dispatch`
 
-On tag push (`v*`), the workflow also uploads all zip bundles to GitHub Release assets.
+On tag push (`v*`), the workflow uploads zip bundles plus checksum/signature files to GitHub Release assets.
+
+Verification:
+
+- [Supply Chain Verification](docs/SUPPLY_CHAIN_VERIFICATION.md)
 
 ## Local manual bundle (optional)
 
