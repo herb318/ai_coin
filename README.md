@@ -125,6 +125,14 @@ Outputs:
 - `docs/NETWORK_STATUS.md`
 - `docs/NETWORK_STATUS.json`
 
+## Full Auto Verification + Publish
+
+Run all checks and automatically commit/push status docs if changed:
+
+```bash
+python3 scripts/auto_verify_publish.py --production-checks
+```
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
