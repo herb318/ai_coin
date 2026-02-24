@@ -1,6 +1,6 @@
 # DPUIN Network Status
 
-Generated at: `2026-02-24T14:36:59.608616+00:00`
+Generated at: `2026-02-24T14:39:45.490422+00:00`
 
 ## Summary
 
@@ -37,6 +37,13 @@ Generated at: `2026-02-24T14:36:59.608616+00:00`
 
 - Launch error: `-`
 - QA error: `-`
+
+## Recent History
+
+- History file: `docs/NETWORK_HISTORY.jsonl`
+- Total history entries: `1`
+
+- `2026-02-24T14:39:45.490422+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
 
 ## Launch State
 

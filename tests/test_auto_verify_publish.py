@@ -72,7 +72,7 @@ class TestAutoVerifyPublish(unittest.TestCase):
     def test_load_status_payload_reads_valid_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             path = Path(tmp_dir) / "NETWORK_STATUS.json"
-            path.write_text(json.dumps({"status_ok": True}), encoding="utf-8")
+            path.write_text(json.dumps({"status_ok": True, "health_level": "OK"}), encoding="utf-8")
             payload = load_status_payload(path)
         self.assertEqual(payload["status_ok"], True)
 

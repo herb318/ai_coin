@@ -1,0 +1,1 @@
+{"generated_at_utc": "2026-02-24T14:39:45.490422+00:00", "health_level": "WARN", "status_ok": true, "production_checks": false, "qa_overall_passed": true, "network_size_nodes": 5, "avg_winner_latency_ms": 45.6, "requests_executed": 5, "epoch": 5, "minted_supply": "4807425.3741", "status_reasons": [], "advisories": ["production_readiness_false"]}

@@ -72,6 +72,64 @@ def _health_level(status_reasons: List[str], advisories: List[str]) -> str:
     return "OK"
 
 
+def _history_entry(payload: Dict[str, Any]) -> Dict[str, Any]:
+    snapshot = payload.get("snapshot", {})
+    return {
+        "generated_at_utc": payload.get("generated_at_utc"),
+        "health_level": payload.get("health_level"),
+        "status_ok": bool(payload.get("status_ok")),
+        "production_checks": bool(payload.get("production_checks")),
+        "qa_overall_passed": bool(payload.get("qa_overall_passed")),
+        "network_size_nodes": int(payload.get("network_size_nodes", 0)),
+        "avg_winner_latency_ms": payload.get("avg_winner_latency_ms"),
+        "requests_executed": int(payload.get("requests_executed", 0)),
+        "epoch": snapshot.get("epoch"),
+        "minted_supply": snapshot.get("minted_supply"),
+        "status_reasons": list(payload.get("status_reasons", [])),
+        "advisories": list(payload.get("advisories", [])),
+    }
+
+
+def _read_history(history_path: Path) -> List[Dict[str, Any]]:
+    if not history_path.exists():
+        return []
+    entries: List[Dict[str, Any]] = []
+    with open(history_path, "r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(item, dict):
+                entries.append(item)
+    return entries
+
+
+def append_history(
+    history_path: Path,
+    payload: Dict[str, Any],
+    max_entries: int = 500,
+    recent_limit: int = 5,
+) -> Dict[str, Any]:
+    entries = _read_history(history_path)
+    entries.append(_history_entry(payload))
+    if max_entries > 0 and len(entries) > max_entries:
+        entries = entries[-max_entries:]
+
+    history_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(history_path, "w", encoding="utf-8") as handle:
+        for item in entries:
+            handle.write(json.dumps(item, ensure_ascii=False) + "\n")
+
+    return {
+        "history_total_entries": len(entries),
+        "recent_history": entries[-recent_limit:] if recent_limit > 0 else [],
+    }
+
+
 def build_status_payload(production_checks: bool, launch_state_path: str) -> Dict[str, Any]:
     identities = IdentityRegistry.from_env()
     network = TranslationNetwork()
@@ -153,6 +211,9 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     prod_checks = prod_readiness.get("checks", {})
     status_reasons = payload.get("status_reasons", [])
     advisories = payload.get("advisories", [])
+    recent_history = payload.get("recent_history", [])
+    history_total_entries = payload.get("history_total_entries", 0)
+    history_path = payload.get("history_path", "docs/NETWORK_HISTORY.jsonl")
     launch_error = payload.get("launch_error", "")
     qa_error = payload.get("qa_error", "")
     checks_lines = "\n".join(
@@ -164,6 +225,12 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     status_reason_lines = "\n".join(f"- `{reason}`" for reason in status_reasons) or "- none"
     advisory_lines = "\n".join(f"- `{advisory}`" for advisory in advisories) or "- none"
     prod_checks_lines = "\n".join(f"- `{name}`: `{passed}`" for name, passed in prod_checks.items()) or "- none"
+    recent_history_lines = "\n".join(
+        f"- `{item.get('generated_at_utc')}` | health=`{item.get('health_level')}` | "
+        f"epoch=`{item.get('epoch')}` | minted=`{item.get('minted_supply')}` | "
+        f"latency=`{item.get('avg_winner_latency_ms')}`"
+        for item in recent_history
+    ) or "- none"
     health = payload.get("health_level", "DEGRADED")
     balances = snapshot.get("balances", {})
 
@@ -201,6 +268,13 @@ Generated at: `{payload['generated_at_utc']}`
 
 - Launch error: `{launch_error or '-'}`
 - QA error: `{qa_error or '-'}`
+
+## Recent History
+
+- History file: `{history_path}`
+- Total history entries: `{history_total_entries}`
+
+{recent_history_lines}
 
 ## Launch State
 
@@ -250,6 +324,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--launch-state-path", default=DEFAULT_LAUNCH_STATE_PATH)
     parser.add_argument("--output-md", default="docs/NETWORK_STATUS.md")
     parser.add_argument("--output-json", default="docs/NETWORK_STATUS.json")
+    parser.add_argument("--history-path", default="docs/NETWORK_HISTORY.jsonl")
+    parser.add_argument("--history-max-entries", type=int, default=500)
     return parser.parse_args()
 
 
@@ -261,13 +337,23 @@ def main() -> None:
         production_checks=args.production_checks,
         launch_state_path=args.launch_state_path,
     )
-    markdown = render_markdown(payload)
 
     out_md = Path(args.output_md)
     out_json = Path(args.output_json)
+    history_path = Path(args.history_path)
     out_md.parent.mkdir(parents=True, exist_ok=True)
     out_json.parent.mkdir(parents=True, exist_ok=True)
 
+    history_meta = append_history(
+        history_path=history_path,
+        payload=payload,
+        max_entries=max(0, args.history_max_entries),
+    )
+    payload["history_path"] = str(history_path)
+    payload["history_total_entries"] = history_meta["history_total_entries"]
+    payload["recent_history"] = history_meta["recent_history"]
+
+    markdown = render_markdown(payload)
     out_md.write_text(markdown, encoding="utf-8")
     out_json.write_text(json.dumps(to_jsonable(payload), ensure_ascii=False, indent=2), encoding="utf-8")
 

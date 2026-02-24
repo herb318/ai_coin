@@ -151,7 +151,15 @@ def main() -> None:
         raise RuntimeError(reason)
 
     changed = run(
-        ["git", "status", "--porcelain", "--", "docs/NETWORK_STATUS.md", "docs/NETWORK_STATUS.json"],
+        [
+            "git",
+            "status",
+            "--porcelain",
+            "--",
+            "docs/NETWORK_STATUS.md",
+            "docs/NETWORK_STATUS.json",
+            "docs/NETWORK_HISTORY.jsonl",
+        ],
         cwd=repo,
     ).strip()
     if not changed:
@@ -163,7 +171,10 @@ def main() -> None:
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return
 
-    run(["git", "add", "docs/NETWORK_STATUS.md", "docs/NETWORK_STATUS.json"], cwd=repo)
+    run(
+        ["git", "add", "docs/NETWORK_STATUS.md", "docs/NETWORK_STATUS.json", "docs/NETWORK_HISTORY.jsonl"],
+        cwd=repo,
+    )
     commit_msg = (
         f"chore: auto-update DPUIN status view ({datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')})"
     )
