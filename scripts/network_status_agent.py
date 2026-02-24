@@ -24,6 +24,9 @@ from decentralized_ai_network_demo import (
     to_jsonable,
 )
 
+PROTOCOL_NAME = "Distributed Proof-of-Useful-Inference Network"
+PROTOCOL_ID = "dpuin-protocol"
+
 
 def _safe_decimal_str(value: Any) -> str:
     return str(value)
@@ -62,6 +65,8 @@ def build_status_payload(production_checks: bool, launch_state_path: str) -> Dic
     payload = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "mode": "network-status-agent",
+        "protocol_name": PROTOCOL_NAME,
+        "protocol_id": PROTOCOL_ID,
         "production_checks": production_checks,
         "network_size_nodes": len(network.nodes),
         "avg_winner_latency_ms": round(avg_latency, 2),
@@ -87,12 +92,13 @@ def render_markdown(payload: Dict[str, Any]) -> str:
         f"- `{node}`: `{balance}`" for node, balance in top_nodes
     ) or "- none"
 
-    return f"""# Network Status
+    return f"""# DPUIN Network Status
 
 Generated at: `{payload['generated_at_utc']}`
 
 ## Summary
 
+- Protocol: `{payload['protocol_name']}` (`{payload['protocol_id']}`)
 - Network nodes: `{payload['network_size_nodes']}`
 - QA overall: `{payload['qa_overall_passed']}` (`{payload['qa_agent_count']}` agents)
 - Avg winner latency: `{payload['avg_winner_latency_ms']} ms`

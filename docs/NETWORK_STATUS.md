@@ -1,13 +1,14 @@
-# Network Status
+# DPUIN Network Status
 
-Generated at: `2026-02-24T14:04:18.192311+00:00`
+Generated at: `2026-02-24T14:26:34.748985+00:00`
 
 ## Summary
 
+- Protocol: `Distributed Proof-of-Useful-Inference Network` (`dpuin-protocol`)
 - Network nodes: `5`
 - QA overall: `True` (`5` agents)
 - Avg winner latency: `45.6 ms`
-- Production checks mode: `True`
+- Production checks mode: `False`
 
 ## Launch State
 
@@ -35,8 +36,8 @@ Generated at: `2026-02-24T14:04:18.192311+00:00`
 - Minted supply: `4807425.3741`
 - Max supply: `10000000.0000`
 - Mainnet open: `True`
-- Account registry ready: `True`
-- Connection configured: `True`
+- Account registry ready: `False`
+- Connection configured: `False`
 
 ## Treasury Balances
 

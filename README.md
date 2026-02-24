@@ -1,6 +1,9 @@
-# Open Evolving Network AI (`ai_coin`)
+# Distributed Proof-of-Useful-Inference Network (DPUIN)
 
 A decentralized AI network prototype where participants contribute useful inference and receive deterministic rewards.
+
+Technical project identifier:
+- `dpuin-protocol`
 
 ## Automation Provenance
 
@@ -65,7 +68,7 @@ See:
 ## Quick Start
 
 ```bash
-cd /Users/j/Desktop/작업/ai_coin
+cd <repo-root>
 cp .env.example .env
 # Fill .env manually with your private values
 ```
@@ -113,17 +116,26 @@ python3 scripts/sanitize_for_git_open.py --root .
 python3 -m unittest discover -s tests -v
 ```
 
-## Current Network Status (Agent)
+## Status View (Git-Friendly)
 
-Generate an easy report of current network state:
+Check current network status view files:
 
 ```bash
-python3 scripts/network_status_agent.py --production-checks
+ls docs/NETWORK_STATUS.md docs/NETWORK_STATUS.json
+```
+
+If missing or outdated, regenerate:
+
+```bash
+python3 scripts/network_status_agent.py
 ```
 
 Outputs:
 - `docs/NETWORK_STATUS.md`
 - `docs/NETWORK_STATUS.json`
+
+GitHub view entrypoint:
+- `docs/NETWORK_STATUS.md`
 
 ## Full Auto Verification + Publish
 

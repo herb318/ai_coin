@@ -1,7 +1,9 @@
 {
-  "generated_at_utc": "2026-02-24T14:04:18.192311+00:00",
+  "generated_at_utc": "2026-02-24T14:26:34.748985+00:00",
   "mode": "network-status-agent",
-  "production_checks": true,
+  "protocol_name": "Distributed Proof-of-Useful-Inference Network",
+  "protocol_id": "dpuin-protocol",
+  "production_checks": false,
   "network_size_nodes": 5,
   "avg_winner_latency_ms": 45.6,
   "preflight_checks": {
@@ -15,7 +17,7 @@
   "qa_overall_passed": true,
   "qa_agent_count": 5,
   "launch_state": {
-    "owner_id": "owner_prod_alpha",
+    "owner_id": "owner-dev-local",
     "armed": false,
     "unstoppable_started": false,
     "successful_open": false,
@@ -53,20 +55,20 @@
     "mainnet_open": true,
     "slash_points": {},
     "ledger_entries": 5,
-    "owner_id": "owner_prod_alpha",
+    "owner_id": "owner-dev-local",
     "wallets_redacted": {
-      "node-sea-1": "wallet..._1_a",
-      "node-tyo-2": "wallet..._2_b",
-      "node-sgp-3": "wallet..._3_c",
-      "node-fra-4": "wallet..._4_d",
-      "node-iad-5": "wallet..._5_e",
-      "founder_treasury": "wallet...ry_f",
-      "ecosystem_treasury": "wallet...ry_g",
-      "security_treasury": "wallet...ry_h",
-      "community_treasury": "wallet...ry_i"
+      "node-sea-1": "dev_cd...63b8",
+      "node-tyo-2": "dev_e5...ee1c",
+      "node-sgp-3": "dev_bc...2a38",
+      "node-fra-4": "dev_df...f6a6",
+      "node-iad-5": "dev_43...a738",
+      "founder_treasury": "dev_3b...ea44",
+      "ecosystem_treasury": "dev_12...6b48",
+      "security_treasury": "dev_a6...6ab6",
+      "community_treasury": "dev_a0...7824"
     },
-    "account_registry_ready": true,
-    "connection_configured": true
+    "account_registry_ready": false,
+    "connection_configured": false
   },
   "top_node_balances": [
     [

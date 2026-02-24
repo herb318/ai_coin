@@ -55,6 +55,8 @@ def scan_file(file_path: str) -> List[Finding]:
         env_match = ENV_SECRET_PATTERN.match(stripped)
         if env_match:
             key = env_match.group(1)
+            if key.endswith("_PATTERN"):
+                continue
             value = env_match.group(2).strip().strip('"').strip("'")
             if value and not likely_placeholder(value):
                 findings.append(

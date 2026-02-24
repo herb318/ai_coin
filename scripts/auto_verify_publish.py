@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run full verification, regenerate network status, and auto-publish if changed."""
+"""Run full verification, regenerate DPUIN status view, and auto-publish if changed."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ def run(cmd: List[str], cwd: Path) -> str:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Verify project and publish updated network status docs automatically."
+        description="Verify project and publish updated DPUIN status view docs automatically."
     )
     parser.add_argument(
         "--repo-root",
@@ -85,7 +85,9 @@ def main() -> None:
         return
 
     run(["git", "add", "docs/NETWORK_STATUS.md", "docs/NETWORK_STATUS.json"], cwd=repo)
-    commit_msg = f"chore: auto-update network status ({datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')})"
+    commit_msg = (
+        f"chore: auto-update DPUIN status view ({datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')})"
+    )
     run(["git", "commit", "-m", commit_msg], cwd=repo)
     if not args.skip_push:
         run(["git", "push"], cwd=repo)
