@@ -42,14 +42,56 @@ def load_status_payload(path: Path) -> Dict[str, Any]:
     return data
 
 
+def parse_generated_at_utc(value: Any) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    candidate = value.strip()
+    if not candidate:
+        return None
+    if candidate.endswith("Z"):
+        candidate = candidate[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(candidate)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(timezone.utc)
+
+
 def should_block_publish(
     status_payload: Dict[str, Any],
     production_checks: bool,
     allow_failing_status: bool,
     fail_on_warn: bool = False,
+    max_status_age_seconds: int = 900,
+    now_utc: datetime | None = None,
 ) -> Tuple[bool, str]:
     if not production_checks or allow_failing_status:
         return False, ""
+    now = now_utc or datetime.now(timezone.utc)
+    max_age = max(0, int(max_status_age_seconds))
+    generated_at = parse_generated_at_utc(status_payload.get("generated_at_utc"))
+    if generated_at is None:
+        return (
+            True,
+            "Generated status is missing/invalid generated_at_utc under --production-checks. "
+            "Regenerate status report before publish.",
+        )
+    age_seconds = (now - generated_at).total_seconds()
+    if age_seconds > max_age:
+        return (
+            True,
+            "Generated status is stale under --production-checks. "
+            f"Age={int(age_seconds)}s exceeds max={max_age}s. "
+            "Regenerate status before publish.",
+        )
+    if age_seconds < -60:
+        return (
+            True,
+            "Generated status timestamp is too far in the future under --production-checks. "
+            f"Clock skew={int(-age_seconds)}s. Fix clocks and regenerate status before publish.",
+        )
     history_chain = status_payload.get("history_chain", {})
     if isinstance(history_chain, dict):
         tracked_entries = int(history_chain.get("tracked_entries", 0) or 0)
@@ -144,6 +186,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Treat WARN health status as blocking during --production-checks.",
     )
+    parser.add_argument(
+        "--max-status-age-seconds",
+        type=int,
+        default=900,
+        help="Maximum allowed status age in seconds during --production-checks (default: 900).",
+    )
     return parser.parse_args()
 
 
@@ -168,6 +216,7 @@ def main() -> None:
         production_checks=args.production_checks,
         allow_failing_status=args.allow_failing_status,
         fail_on_warn=args.fail_on_warn,
+        max_status_age_seconds=args.max_status_age_seconds,
     )
     if should_block:
         raise RuntimeError(reason)

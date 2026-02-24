@@ -1,27 +1,74 @@
 import json
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
-from scripts.auto_verify_publish import load_status_payload, should_block_publish
+from scripts.auto_verify_publish import load_status_payload, parse_generated_at_utc, should_block_publish
+
+
+def _base_status_payload() -> dict:
+    return {
+        "generated_at_utc": datetime(2026, 2, 24, 15, 0, 0, tzinfo=timezone.utc).isoformat(),
+        "status_ok": True,
+        "health_level": "OK",
+        "status_reasons": [],
+    }
 
 
 class TestAutoVerifyPublish(unittest.TestCase):
-    def test_should_block_when_history_chain_invalid(self) -> None:
+    def test_parse_generated_at_utc_accepts_zulu(self) -> None:
+        parsed = parse_generated_at_utc("2026-02-24T15:00:00Z")
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed, datetime(2026, 2, 24, 15, 0, 0, tzinfo=timezone.utc))
+
+    def test_should_block_when_generated_timestamp_missing(self) -> None:
         blocked, reason = should_block_publish(
-            status_payload={
-                "status_ok": True,
-                "health_level": "OK",
-                "history_chain": {
-                    "tracked_entries": 3,
-                    "valid": False,
-                    "broken_index": 2,
-                    "broken_reason": "history_hash verification failed",
-                    "latest_hash": "abc",
-                },
-            },
+            status_payload={"status_ok": True, "health_level": "OK"},
             production_checks=True,
             allow_failing_status=False,
+        )
+        self.assertTrue(blocked)
+        self.assertIn("generated_at_utc", reason)
+
+    def test_should_block_when_status_is_stale(self) -> None:
+        payload = _base_status_payload()
+        blocked, reason = should_block_publish(
+            status_payload=payload,
+            production_checks=True,
+            allow_failing_status=False,
+            max_status_age_seconds=60,
+            now_utc=datetime(2026, 2, 24, 15, 5, 0, tzinfo=timezone.utc),
+        )
+        self.assertTrue(blocked)
+        self.assertIn("stale", reason)
+
+    def test_should_not_block_when_status_is_fresh(self) -> None:
+        payload = _base_status_payload()
+        blocked, reason = should_block_publish(
+            status_payload=payload,
+            production_checks=True,
+            allow_failing_status=False,
+            max_status_age_seconds=600,
+            now_utc=datetime(2026, 2, 24, 15, 5, 0, tzinfo=timezone.utc),
+        )
+        self.assertFalse(blocked)
+        self.assertEqual(reason, "")
+
+    def test_should_block_when_history_chain_invalid(self) -> None:
+        payload = _base_status_payload()
+        payload["history_chain"] = {
+            "tracked_entries": 3,
+            "valid": False,
+            "broken_index": 2,
+            "broken_reason": "history_hash verification failed",
+            "latest_hash": "abc",
+        }
+        blocked, reason = should_block_publish(
+            status_payload=payload,
+            production_checks=True,
+            allow_failing_status=False,
+            now_utc=datetime(2026, 2, 24, 15, 0, 30, tzinfo=timezone.utc),
         )
         self.assertTrue(blocked)
         self.assertIn("history chain integrity", reason)
@@ -37,12 +84,10 @@ class TestAutoVerifyPublish(unittest.TestCase):
         self.assertEqual(reason, "")
 
     def test_should_not_block_invalid_history_when_allow_failing(self) -> None:
+        payload = _base_status_payload()
+        payload["history_chain"] = {"tracked_entries": 2, "valid": False}
         blocked, reason = should_block_publish(
-            status_payload={
-                "status_ok": True,
-                "health_level": "OK",
-                "history_chain": {"tracked_entries": 2, "valid": False},
-            },
+            status_payload=payload,
             production_checks=True,
             allow_failing_status=True,
         )
@@ -50,15 +95,20 @@ class TestAutoVerifyPublish(unittest.TestCase):
         self.assertEqual(reason, "")
 
     def test_should_block_when_status_is_degraded(self) -> None:
-        blocked, reason = should_block_publish(
-            status_payload={
+        payload = _base_status_payload()
+        payload.update(
+            {
                 "status_ok": False,
                 "health_level": "DEGRADED",
                 "status_reasons": ["preflight:key_management_passed"],
                 "recommended_actions": ["Set NETWORK_SHARED_SECRET and retry."],
-            },
+            }
+        )
+        blocked, reason = should_block_publish(
+            status_payload=payload,
             production_checks=True,
             allow_failing_status=False,
+            now_utc=datetime(2026, 2, 24, 15, 0, 30, tzinfo=timezone.utc),
         )
         self.assertTrue(blocked)
         self.assertIn("degraded", reason)
@@ -66,8 +116,10 @@ class TestAutoVerifyPublish(unittest.TestCase):
         self.assertIn("NETWORK_SHARED_SECRET", reason)
 
     def test_should_not_block_when_allow_failing_status_enabled(self) -> None:
+        payload = _base_status_payload()
+        payload.update({"status_ok": False, "health_level": "DEGRADED", "status_reasons": ["qa_failed"]})
         blocked, reason = should_block_publish(
-            status_payload={"status_ok": False, "health_level": "DEGRADED", "status_reasons": ["qa_failed"]},
+            status_payload=payload,
             production_checks=True,
             allow_failing_status=True,
         )
@@ -75,35 +127,44 @@ class TestAutoVerifyPublish(unittest.TestCase):
         self.assertEqual(reason, "")
 
     def test_should_not_block_when_status_ok(self) -> None:
+        payload = _base_status_payload()
         blocked, reason = should_block_publish(
-            status_payload={"status_ok": True, "health_level": "OK", "status_reasons": []},
+            status_payload=payload,
             production_checks=True,
             allow_failing_status=False,
+            now_utc=datetime(2026, 2, 24, 15, 0, 30, tzinfo=timezone.utc),
         )
         self.assertFalse(blocked)
         self.assertEqual(reason, "")
 
     def test_should_not_block_warn_by_default(self) -> None:
+        payload = _base_status_payload()
+        payload.update({"health_level": "WARN", "advisories": ["production_readiness_false"]})
         blocked, reason = should_block_publish(
-            status_payload={"status_ok": True, "health_level": "WARN", "advisories": ["production_readiness_false"]},
+            status_payload=payload,
             production_checks=True,
             allow_failing_status=False,
             fail_on_warn=False,
+            now_utc=datetime(2026, 2, 24, 15, 0, 30, tzinfo=timezone.utc),
         )
         self.assertFalse(blocked)
         self.assertEqual(reason, "")
 
     def test_should_block_warn_when_fail_on_warn_enabled(self) -> None:
-        blocked, reason = should_block_publish(
-            status_payload={
-                "status_ok": True,
+        payload = _base_status_payload()
+        payload.update(
+            {
                 "health_level": "WARN",
                 "advisories": ["production_readiness_false"],
                 "recommended_actions": ["Run status agent with --production-checks."],
-            },
+            }
+        )
+        blocked, reason = should_block_publish(
+            status_payload=payload,
             production_checks=True,
             allow_failing_status=False,
             fail_on_warn=True,
+            now_utc=datetime(2026, 2, 24, 15, 0, 30, tzinfo=timezone.utc),
         )
         self.assertTrue(blocked)
         self.assertIn("WARN", reason)
