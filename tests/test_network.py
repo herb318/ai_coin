@@ -214,6 +214,33 @@ class TestSecurity(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "invalid request_id format"):
             net.process_request(env)
 
+    def test_duplicate_request_id_is_blocked_after_security_cache_eviction(self) -> None:
+        net = TranslationNetwork()
+        net.run_preflight_checks(security_scan_passed=True, production_mode=False)
+        net.open_mainnet()
+        net.security.max_seen_entries = 1
+
+        first = net.security.build_envelope(
+            "dup-request-id-persistent",
+            "node-sea-1",
+            "안녕하세요, 회의에 참석해 주셔서 감사합니다.",
+        )
+        filler = net.security.build_envelope(
+            "dup-request-id-filler",
+            "node-tyo-2",
+            "질문이 있으면 언제든지 말씀해 주세요.",
+        )
+        net.process_request(first)
+        net.process_request(filler)
+
+        replay = net.security.build_envelope(
+            "dup-request-id-persistent",
+            "node-sgp-3",
+            "오늘 일정은 실시간 번역 네트워크 데모입니다.",
+        )
+        with self.assertRaisesRegex(ValueError, "duplicate request_id"):
+            net.process_request(replay)
+
     def test_stale_timestamp_is_blocked(self) -> None:
         net = TranslationNetwork()
         net.run_preflight_checks(security_scan_passed=True, production_mode=False)

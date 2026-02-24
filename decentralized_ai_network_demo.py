@@ -801,6 +801,7 @@ class TranslationNetwork:
         self.model_version = "llm-shard-v1.0"
         self.epoch = 0
         self.ledger: List[Dict[str, Any]] = []
+        self.ledger_request_ids: Set[str] = set()
         self.launch_gate = LaunchGate()
         self.token = TokenEconomy()
         self.token.bootstrap_genesis()
@@ -947,6 +948,11 @@ class TranslationNetwork:
             raise ValueError(f"request rejected: {reason}")
 
         request_id = str(envelope["request_id"])
+        if request_id in self.ledger_request_ids:
+            node_id = str(envelope.get("node_id", "unknown"))
+            self.slash_points[node_id] += 1
+            raise ValueError("request rejected: duplicate request_id")
+
         source_text = str(envelope["source_text"])
         canonical = self.canonical_translate_ko_to_en(source_text)
         proposals = [node.propose(source_text, canonical, self.epoch) for node in self.nodes]
@@ -984,6 +990,7 @@ class TranslationNetwork:
         }
         ledger_entry["entry_hash"] = sha256_hex(canonical_json(ledger_entry))
         self.ledger.append(ledger_entry)
+        self.ledger_request_ids.add(request_id)
 
         applied = self.apply_approved_upgrades()
         self.epoch += 1
@@ -1204,6 +1211,33 @@ class SecurityQAAgent(QAAgent):
             invalid_request_id_blocked = "invalid request_id format" in str(exc)
             invalid_request_id_reason = str(exc)
 
+        persistent_replay_net = self.network_factory()
+        persistent_replay_net.security.max_seen_entries = 1
+        first_seen = persistent_replay_net.security.build_envelope(
+            "qa-security-persistent-dup",
+            "node-sea-1",
+            "안녕하세요, 회의에 참석해 주셔서 감사합니다.",
+        )
+        filler = persistent_replay_net.security.build_envelope(
+            "qa-security-persistent-filler",
+            "node-tyo-2",
+            "질문이 있으면 언제든지 말씀해 주세요.",
+        )
+        persistent_replay_net.process_request(first_seen)
+        persistent_replay_net.process_request(filler)
+        replay_after_evict = persistent_replay_net.security.build_envelope(
+            "qa-security-persistent-dup",
+            "node-sgp-3",
+            "오늘 일정은 실시간 번역 네트워크 데모입니다.",
+        )
+        persistent_duplicate_blocked = False
+        persistent_duplicate_reason = ""
+        try:
+            persistent_replay_net.process_request(replay_after_evict)
+        except ValueError as exc:
+            persistent_duplicate_blocked = "duplicate request_id" in str(exc)
+            persistent_duplicate_reason = str(exc)
+
         stale_timestamp = net.security.build_envelope(
             "qa-security-stale-ts",
             "node-sea-1",
@@ -1251,6 +1285,7 @@ class SecurityQAAgent(QAAgent):
             and duplicate_request_blocked
             and cross_node_duplicate_blocked
             and invalid_request_id_blocked
+            and persistent_duplicate_blocked
             and stale_timestamp_blocked
             and rate_limit_blocked
         )
@@ -1275,6 +1310,8 @@ class SecurityQAAgent(QAAgent):
                 "cross_node_duplicate_reason": cross_node_duplicate_reason,
                 "invalid_request_id_blocked": invalid_request_id_blocked,
                 "invalid_request_id_reason": invalid_request_id_reason,
+                "persistent_duplicate_blocked": persistent_duplicate_blocked,
+                "persistent_duplicate_reason": persistent_duplicate_reason,
                 "stale_timestamp_blocked": stale_timestamp_blocked,
                 "stale_timestamp_reason": stale_timestamp_reason,
                 "rate_limit_blocked": rate_limit_blocked,
