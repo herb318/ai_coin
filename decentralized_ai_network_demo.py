@@ -727,6 +727,8 @@ class RequestSecurity:
             return False, "empty source_text"
         if len(source_text) > self.SOURCE_TEXT_MAX_CHARS:
             return False, "source_text too large"
+        if any(ord(ch) < 32 for ch in source_text):
+            return False, "invalid source_text control chars"
 
         nonce = envelope["nonce"]
         if not isinstance(nonce, str):
@@ -1199,6 +1201,15 @@ class SecurityQAAgent(QAAgent):
             oversized_blocked = "source_text too large" in str(exc)
             oversized_reason = str(exc)
 
+        control_chars = net.security.build_envelope("qa-security-control-chars", "node-sea-1", "hello\x00world")
+        control_chars_blocked = False
+        control_chars_reason = ""
+        try:
+            net.process_request(control_chars)
+        except ValueError as exc:
+            control_chars_blocked = "invalid source_text control chars" in str(exc)
+            control_chars_reason = str(exc)
+
         first = net.security.build_envelope("qa-security-dup-req", "node-sea-1", "안녕하세요, 회의에 참석해 주셔서 감사합니다.")
         net.process_request(first)
         duplicate = net.security.build_envelope("qa-security-dup-req", "node-sea-1", "안녕하세요, 회의에 참석해 주셔서 감사합니다.")
@@ -1340,6 +1351,7 @@ class SecurityQAAgent(QAAgent):
             and unknown_node_blocked
             and nonce_blocked
             and oversized_blocked
+            and control_chars_blocked
             and duplicate_request_blocked
             and cross_node_duplicate_blocked
             and invalid_request_id_blocked
@@ -1364,6 +1376,8 @@ class SecurityQAAgent(QAAgent):
                 "nonce_reason": nonce_reason,
                 "oversized_blocked": oversized_blocked,
                 "oversized_reason": oversized_reason,
+                "control_chars_blocked": control_chars_blocked,
+                "control_chars_reason": control_chars_reason,
                 "duplicate_request_blocked": duplicate_request_blocked,
                 "duplicate_request_reason": duplicate_request_reason,
                 "cross_node_duplicate_blocked": cross_node_duplicate_blocked,

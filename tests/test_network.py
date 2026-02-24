@@ -206,6 +206,15 @@ class TestSecurity(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "source_text too large"):
             net.process_request(env)
 
+    def test_source_text_with_control_chars_is_blocked(self) -> None:
+        net = TranslationNetwork()
+        net.run_preflight_checks(security_scan_passed=True, production_mode=False)
+        net.open_mainnet()
+
+        env = net.security.build_envelope("control-char-source", "node-sea-1", "hello\x00world")
+        with self.assertRaisesRegex(ValueError, "invalid source_text control chars"):
+            net.process_request(env)
+
     def test_duplicate_request_id_is_blocked(self) -> None:
         net = TranslationNetwork()
         net.run_preflight_checks(security_scan_passed=True, production_mode=False)
