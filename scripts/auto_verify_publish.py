@@ -9,7 +9,7 @@ import shlex
 import subprocess  # nosec B404
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, List, Tuple
 
 
 def run(cmd: List[str], cwd: Path) -> str:
@@ -27,6 +27,38 @@ def run(cmd: List[str], cwd: Path) -> str:
     if completed.stderr.strip():
         print(completed.stderr.strip())
     return completed.stdout
+
+
+def load_status_payload(path: Path) -> Dict[str, Any]:
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except FileNotFoundError as exc:
+        raise RuntimeError(f"Missing status JSON: {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Invalid status JSON: {path}") from exc
+    if not isinstance(data, dict):
+        raise RuntimeError(f"Unexpected status JSON type at {path}")
+    return data
+
+
+def should_block_publish(
+    status_payload: Dict[str, Any],
+    production_checks: bool,
+    allow_failing_status: bool,
+) -> Tuple[bool, str]:
+    if not production_checks or allow_failing_status:
+        return False, ""
+    if status_payload.get("status_ok", False):
+        return False, ""
+    reasons = status_payload.get("status_reasons", [])
+    reason_text = ", ".join(str(reason) for reason in reasons) if reasons else "unknown reason"
+    return (
+        True,
+        "Generated status is degraded under --production-checks. "
+        f"Reasons: {reason_text}. "
+        "Fix environment/security checks or pass --allow-failing-status.",
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -76,17 +108,14 @@ def main() -> None:
         status_cmd.append("--production-checks")
     run(status_cmd, cwd=repo)
     status_json_path = repo / "docs" / "NETWORK_STATUS.json"
-    with open(status_json_path, "r", encoding="utf-8") as handle:
-        status_payload = json.load(handle)
-
-    if args.production_checks and not args.allow_failing_status and not status_payload.get("status_ok", False):
-        reasons = status_payload.get("status_reasons", [])
-        reason_text = ", ".join(str(reason) for reason in reasons) if reasons else "unknown reason"
-        raise RuntimeError(
-            "Generated status is degraded under --production-checks. "
-            f"Reasons: {reason_text}. "
-            "Fix environment/security checks or pass --allow-failing-status."
-        )
+    status_payload = load_status_payload(status_json_path)
+    should_block, reason = should_block_publish(
+        status_payload=status_payload,
+        production_checks=args.production_checks,
+        allow_failing_status=args.allow_failing_status,
+    )
+    if should_block:
+        raise RuntimeError(reason)
 
     changed = run(
         ["git", "status", "--porcelain", "--", "docs/NETWORK_STATUS.md", "docs/NETWORK_STATUS.json"],

@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-24T14:30:53.386011+00:00",
+  "generated_at_utc": "2026-02-24T14:34:14.324777+00:00",
   "mode": "network-status-agent",
   "protocol_name": "Distributed Proof-of-Useful-Inference Network",
   "protocol_id": "dpuin-protocol",
@@ -7,6 +7,9 @@
   "status_reasons": [],
   "launch_error": "",
   "qa_error": "",
+  "advisories": [
+    "production_readiness_false"
+  ],
   "production_checks": false,
   "network_size_nodes": 5,
   "avg_winner_latency_ms": 45.6,
@@ -18,6 +21,17 @@
     "key_management_passed": true,
     "stress_test_passed": true,
     "account_registry_passed": true
+  },
+  "production_readiness": {
+    "ready": false,
+    "checks": {
+      "security_scan_passed": true,
+      "economic_invariant_passed": true,
+      "consensus_quorum_passed": true,
+      "key_management_passed": false,
+      "stress_test_passed": true,
+      "account_registry_passed": false
+    }
   },
   "qa_overall_passed": true,
   "qa_agent_count": 5,

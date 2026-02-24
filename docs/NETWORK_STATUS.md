@@ -1,6 +1,6 @@
 # DPUIN Network Status
 
-Generated at: `2026-02-24T14:30:53.386011+00:00`
+Generated at: `2026-02-24T14:34:14.324777+00:00`
 
 ## Summary
 
@@ -15,6 +15,23 @@ Generated at: `2026-02-24T14:30:53.386011+00:00`
 ## Status Reasons
 
 - none
+
+## Advisories
+
+- `production_readiness_false`
+
+## Production Readiness
+
+- Ready: `False`
+
+### Production Checks
+
+- `security_scan_passed`: `True`
+- `economic_invariant_passed`: `True`
+- `consensus_quorum_passed`: `True`
+- `key_management_passed`: `False`
+- `stress_test_passed`: `True`
+- `account_registry_passed`: `False`
 
 ## Errors
 

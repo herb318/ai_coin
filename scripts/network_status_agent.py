@@ -55,11 +55,22 @@ def _safe_run_qa_suite(production_checks: bool) -> Dict[str, Any]:
         }
 
 
+def _production_readiness_snapshot() -> Dict[str, Any]:
+    network = TranslationNetwork()
+    checks = network.run_preflight_checks(security_scan_passed=True, production_mode=True)
+    return {
+        "ready": all(checks.values()),
+        "checks": checks,
+    }
+
+
 def build_status_payload(production_checks: bool, launch_state_path: str) -> Dict[str, Any]:
     identities = IdentityRegistry.from_env()
     network = TranslationNetwork()
     checks = network.run_preflight_checks(security_scan_passed=True, production_mode=production_checks)
+    production_readiness = _production_readiness_snapshot()
     status_reasons: List[str] = []
+    advisories: List[str] = []
     launch_error = ""
     outputs: List[Dict[str, Any]] = []
 
@@ -92,6 +103,10 @@ def build_status_payload(production_checks: bool, launch_state_path: str) -> Dic
         status_reasons.append("qa_failed")
         if qa["error"]:
             status_reasons.append("qa_execution_error")
+
+    if not production_checks and not production_readiness["ready"]:
+        advisories.append("production_readiness_false")
+
     status_ok = not status_reasons
 
     payload = {
@@ -103,11 +118,13 @@ def build_status_payload(production_checks: bool, launch_state_path: str) -> Dic
         "status_reasons": status_reasons,
         "launch_error": launch_error,
         "qa_error": qa["error"],
+        "advisories": advisories,
         "production_checks": production_checks,
         "network_size_nodes": len(network.nodes),
         "avg_winner_latency_ms": round(avg_latency, 2),
         "requests_executed": len(outputs),
         "preflight_checks": checks,
+        "production_readiness": production_readiness,
         "qa_overall_passed": qa["overall_passed"],
         "qa_agent_count": qa["agent_count"],
         "launch_state": launch_state,
@@ -122,7 +139,10 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     launch_state = payload["launch_state"]
     top_nodes = payload["top_node_balances"]
     checks = payload["preflight_checks"]
+    prod_readiness = payload.get("production_readiness", {"ready": False, "checks": {}})
+    prod_checks = prod_readiness.get("checks", {})
     status_reasons = payload.get("status_reasons", [])
+    advisories = payload.get("advisories", [])
     launch_error = payload.get("launch_error", "")
     qa_error = payload.get("qa_error", "")
     checks_lines = "\n".join(
@@ -132,6 +152,8 @@ def render_markdown(payload: Dict[str, Any]) -> str:
         f"- `{node}`: `{balance}`" for node, balance in top_nodes
     ) or "- none"
     status_reason_lines = "\n".join(f"- `{reason}`" for reason in status_reasons) or "- none"
+    advisory_lines = "\n".join(f"- `{advisory}`" for advisory in advisories) or "- none"
+    prod_checks_lines = "\n".join(f"- `{name}`: `{passed}`" for name, passed in prod_checks.items()) or "- none"
     health = "OK" if payload.get("status_ok") else "DEGRADED"
     balances = snapshot.get("balances", {})
 
@@ -152,6 +174,18 @@ Generated at: `{payload['generated_at_utc']}`
 ## Status Reasons
 
 {status_reason_lines}
+
+## Advisories
+
+{advisory_lines}
+
+## Production Readiness
+
+- Ready: `{prod_readiness.get('ready')}`
+
+### Production Checks
+
+{prod_checks_lines}
 
 ## Errors
 

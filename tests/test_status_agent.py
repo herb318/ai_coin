@@ -33,6 +33,9 @@ class TestStatusAgent(unittest.TestCase):
 
         self.assertTrue(payload["status_ok"])
         self.assertEqual(payload["status_reasons"], [])
+        self.assertIn("production_readiness", payload)
+        self.assertFalse(payload["production_readiness"]["ready"])
+        self.assertIn("production_readiness_false", payload["advisories"])
         self.assertTrue(payload["qa_overall_passed"])
         self.assertGreater(payload["requests_executed"], 0)
         self.assertEqual(payload["launch_error"], "")
@@ -47,6 +50,8 @@ class TestStatusAgent(unittest.TestCase):
         self.assertFalse(payload["status_ok"])
         self.assertIn("preflight:key_management_passed", payload["status_reasons"])
         self.assertIn("preflight:account_registry_passed", payload["status_reasons"])
+        self.assertFalse(payload["production_readiness"]["ready"])
+        self.assertEqual(payload["advisories"], [])
         self.assertTrue(str(payload["launch_error"]).startswith("Launch blocked"))
         self.assertFalse(payload["qa_overall_passed"])
         self.assertTrue(payload["qa_error"])
@@ -60,6 +65,8 @@ class TestStatusAgent(unittest.TestCase):
 
         self.assertTrue(payload["status_ok"])
         self.assertTrue(all(payload["preflight_checks"].values()))
+        self.assertTrue(payload["production_readiness"]["ready"])
+        self.assertEqual(payload["advisories"], [])
         self.assertEqual(payload["launch_error"], "")
         self.assertTrue(payload["qa_overall_passed"])
         self.assertEqual(payload["qa_error"], "")

@@ -130,6 +130,12 @@ If missing or outdated, regenerate:
 python3 scripts/network_status_agent.py
 ```
 
+Strict production readiness view:
+
+```bash
+python3 scripts/network_status_agent.py --production-checks
+```
+
 Outputs:
 - `docs/NETWORK_STATUS.md`
 - `docs/NETWORK_STATUS.json`
@@ -140,6 +146,9 @@ GitHub view entrypoint:
 Health fields in JSON:
 - `status_ok`: overall health flag
 - `status_reasons`: machine-readable degraded reasons
+- `advisories`: non-fatal warnings (for example local run while production readiness is false)
+- `production_readiness.ready`: strict production readiness result
+- `production_readiness.checks`: strict production check breakdown
 - `launch_error` / `qa_error`: failure details when degraded
 
 ## Full Auto Verification + Publish
