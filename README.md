@@ -12,6 +12,7 @@ This repository was completed through **ChatGPT Codex automation** with user-dir
 Verification details:
 - [Codex Automation Verification](docs/CODEX_AUTOMATION_VERIFICATION.md)
 - [Network Status](docs/NETWORK_STATUS.md)
+- [Cross-Platform Release](docs/CROSS_PLATFORM_RELEASE.md)
 
 ## What This Project Is
 
@@ -20,6 +21,7 @@ Verification details:
 - Launch gate + security controls before opening
 - QA agent/team validation workflow
 - Public-safe release workflow (secret/PII scan)
+- Cross-platform prebuilt binary pipeline (Windows/Linux/macOS)
 
 ## Core Principles
 
@@ -131,6 +133,29 @@ Sanitize scanner coverage now includes:
 
 ```bash
 python3 -m unittest discover -s tests -v
+```
+
+## Cross-Platform Prebuilt Binaries
+
+GitHub Actions now builds precompiled binaries for:
+
+- Windows
+- Linux
+- macOS
+
+Workflow:
+- `.github/workflows/cross-platform-release.yml`
+
+Outputs:
+- `dpuin-windows.zip`
+- `dpuin-linux.zip`
+- `dpuin-macos.zip`
+
+Trigger release asset upload by pushing a version tag:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
 ```
 
 ## Status View (Git-Friendly)

@@ -1,0 +1,85 @@
+name: cross-platform-release
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build-${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+            binary_name: dpuin
+          - os: windows-latest
+            target: windows
+            binary_name: dpuin.exe
+          - os: macos-latest
+            target: macos
+            binary_name: dpuin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependency
+        run: python -m pip install --upgrade pip pyinstaller bandit
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Run security scan
+        run: python -m bandit -r . -q
+
+      - name: Run sanitize scan
+        run: python scripts/sanitize_for_git_open.py --root .
+
+      - name: Build single-file binary
+        run: python -m PyInstaller --clean --onefile --name dpuin decentralized_ai_network_demo.py
+
+      - name: Bundle release archive
+        run: python scripts/create_release_bundle.py --binary-path dist/${{ matrix.binary_name }} --target ${{ matrix.target }} --output-dir release
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dpuin-${{ matrix.target }}
+          path: release/dpuin-${{ matrix.target }}.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: publish-release-assets
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish GitHub release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*.zip
+          generate_release_notes: true

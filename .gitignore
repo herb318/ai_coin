@@ -22,3 +22,7 @@ secrets/
 tmp/
 logs/
 runtime/
+build/
+dist/
+release/
+*.spec
