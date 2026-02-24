@@ -35,6 +35,7 @@ Verification details:
 - Mainnet cannot open until mandatory preflight checks pass.
 - HMAC auth, replay protection, timestamp skew validation, and rate limit are enforced.
 - `request_id` format is validated and enforced as ledger-level network-wide unique (cache eviction cannot bypass).
+- Verified envelope fields are canonicalized (trimmed) before inference/ledger processing.
 
 4. Public transparency:
 - Reward equations and treasury splits are documented.

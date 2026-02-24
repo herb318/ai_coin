@@ -662,6 +662,9 @@ class RequestSecurity:
         return hmac.new(self.shared_secret, msg, hashlib.sha256).hexdigest()
 
     def build_envelope(self, request_id: str, node_id: str, source_text: str) -> Dict[str, Any]:
+        request_id = request_id.strip()
+        node_id = node_id.strip()
+        source_text = source_text.strip()
         payload = {
             "request_id": request_id,
             "node_id": node_id,
@@ -740,6 +743,15 @@ class RequestSecurity:
         expected = self.sign(signed_payload)
         if not hmac.compare_digest(expected, provided):
             return False, "signature verification failed"
+
+        # Persist canonicalized values back into the mutable envelope so downstream
+        # processing and ledger checks use exactly the verified payload.
+        envelope["request_id"] = request_id
+        envelope["node_id"] = node_id
+        envelope["source_text"] = source_text
+        envelope["nonce"] = nonce
+        envelope["timestamp"] = timestamp
+        envelope["signature"] = provided
 
         self._cleanup_seen_entries(now)
         nonce_key = f"{node_id}:{nonce}"
@@ -947,13 +959,13 @@ class TranslationNetwork:
             self.slash_points[node_id] += 1
             raise ValueError(f"request rejected: {reason}")
 
-        request_id = str(envelope["request_id"])
+        request_id = str(envelope["request_id"]).strip()
         if request_id in self.ledger_request_ids:
             node_id = str(envelope.get("node_id", "unknown"))
             self.slash_points[node_id] += 1
             raise ValueError("request rejected: duplicate request_id")
 
-        source_text = str(envelope["source_text"])
+        source_text = str(envelope["source_text"]).strip()
         canonical = self.canonical_translate_ko_to_en(source_text)
         proposals = [node.propose(source_text, canonical, self.epoch) for node in self.nodes]
 
@@ -1238,6 +1250,33 @@ class SecurityQAAgent(QAAgent):
             persistent_duplicate_blocked = "duplicate request_id" in str(exc)
             persistent_duplicate_reason = str(exc)
 
+        replay_after_evict_whitespace = persistent_replay_net.security.build_envelope(
+            "  qa-security-persistent-dup  ",
+            "node-fra-4",
+            "이 네트워크는 출시 전 보안 검증이 필요합니다.",
+        )
+        persistent_whitespace_duplicate_blocked = False
+        persistent_whitespace_duplicate_reason = ""
+        try:
+            persistent_replay_net.process_request(replay_after_evict_whitespace)
+        except ValueError as exc:
+            persistent_whitespace_duplicate_blocked = "duplicate request_id" in str(exc)
+            persistent_whitespace_duplicate_reason = str(exc)
+
+        whitespace_source = net.security.build_envelope(
+            "qa-security-whitespace-source",
+            "node-sea-1",
+            "  안녕하세요, 회의에 참석해 주셔서 감사합니다.  ",
+        )
+        whitespace_source_ok = False
+        whitespace_source_output = ""
+        try:
+            whitespace_result = net.process_request(whitespace_source)
+            whitespace_source_output = str(whitespace_result.get("final_output", ""))
+            whitespace_source_ok = whitespace_source_output == "Hello, thank you for joining the meeting."
+        except ValueError:
+            whitespace_source_ok = False
+
         stale_timestamp = net.security.build_envelope(
             "qa-security-stale-ts",
             "node-sea-1",
@@ -1286,6 +1325,8 @@ class SecurityQAAgent(QAAgent):
             and cross_node_duplicate_blocked
             and invalid_request_id_blocked
             and persistent_duplicate_blocked
+            and persistent_whitespace_duplicate_blocked
+            and whitespace_source_ok
             and stale_timestamp_blocked
             and rate_limit_blocked
         )
@@ -1312,6 +1353,10 @@ class SecurityQAAgent(QAAgent):
                 "invalid_request_id_reason": invalid_request_id_reason,
                 "persistent_duplicate_blocked": persistent_duplicate_blocked,
                 "persistent_duplicate_reason": persistent_duplicate_reason,
+                "persistent_whitespace_duplicate_blocked": persistent_whitespace_duplicate_blocked,
+                "persistent_whitespace_duplicate_reason": persistent_whitespace_duplicate_reason,
+                "whitespace_source_ok": whitespace_source_ok,
+                "whitespace_source_output": whitespace_source_output,
                 "stale_timestamp_blocked": stale_timestamp_blocked,
                 "stale_timestamp_reason": stale_timestamp_reason,
                 "rate_limit_blocked": rate_limit_blocked,
