@@ -50,6 +50,22 @@ def should_block_publish(
 ) -> Tuple[bool, str]:
     if not production_checks or allow_failing_status:
         return False, ""
+    history_chain = status_payload.get("history_chain", {})
+    if isinstance(history_chain, dict):
+        tracked_entries = int(history_chain.get("tracked_entries", 0) or 0)
+        chain_valid = bool(history_chain.get("valid", True))
+        if tracked_entries > 0 and not chain_valid:
+            broken_index = history_chain.get("broken_index", -1)
+            broken_reason = str(history_chain.get("broken_reason", "") or "unknown")
+            latest_hash = str(history_chain.get("latest_hash", "") or "-")
+            return (
+                True,
+                "Generated status reports invalid history chain integrity under --production-checks. "
+                f"Broken index: {broken_index}. "
+                f"Reason: {broken_reason}. "
+                f"Latest valid hash: {latest_hash}. "
+                "Repair or rotate history file before publish.",
+            )
     health_level = str(status_payload.get("health_level", "")).upper().strip()
     if not health_level:
         has_reasons = bool(status_payload.get("status_reasons"))

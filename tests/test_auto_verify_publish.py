@@ -7,11 +7,44 @@ from scripts.auto_verify_publish import load_status_payload, should_block_publis
 
 
 class TestAutoVerifyPublish(unittest.TestCase):
+    def test_should_block_when_history_chain_invalid(self) -> None:
+        blocked, reason = should_block_publish(
+            status_payload={
+                "status_ok": True,
+                "health_level": "OK",
+                "history_chain": {
+                    "tracked_entries": 3,
+                    "valid": False,
+                    "broken_index": 2,
+                    "broken_reason": "history_hash verification failed",
+                    "latest_hash": "abc",
+                },
+            },
+            production_checks=True,
+            allow_failing_status=False,
+        )
+        self.assertTrue(blocked)
+        self.assertIn("history chain integrity", reason)
+        self.assertIn("broken index", reason.lower())
+
     def test_should_not_block_when_production_checks_disabled(self) -> None:
         blocked, reason = should_block_publish(
             status_payload={"status_ok": False, "health_level": "DEGRADED", "status_reasons": ["qa_failed"]},
             production_checks=False,
             allow_failing_status=False,
+        )
+        self.assertFalse(blocked)
+        self.assertEqual(reason, "")
+
+    def test_should_not_block_invalid_history_when_allow_failing(self) -> None:
+        blocked, reason = should_block_publish(
+            status_payload={
+                "status_ok": True,
+                "health_level": "OK",
+                "history_chain": {"tracked_entries": 2, "valid": False},
+            },
+            production_checks=True,
+            allow_failing_status=True,
         )
         self.assertFalse(blocked)
         self.assertEqual(reason, "")

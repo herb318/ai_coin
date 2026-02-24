@@ -150,6 +150,96 @@ def _history_entry(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _is_sha256_hex(value: str) -> bool:
+    return len(value) == 64 and all(ch in "0123456789abcdef" for ch in value)
+
+
+def _history_hash_basis(entry: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "generated_at_utc": entry.get("generated_at_utc"),
+        "status_fingerprint": entry.get("status_fingerprint"),
+        "health_level": entry.get("health_level"),
+        "status_ok": bool(entry.get("status_ok")),
+        "production_checks": bool(entry.get("production_checks")),
+        "qa_overall_passed": bool(entry.get("qa_overall_passed")),
+        "network_size_nodes": int(entry.get("network_size_nodes", 0)),
+        "avg_winner_latency_ms": entry.get("avg_winner_latency_ms"),
+        "requests_executed": int(entry.get("requests_executed", 0)),
+        "epoch": entry.get("epoch"),
+        "minted_supply": entry.get("minted_supply"),
+        "status_reasons": list(entry.get("status_reasons", [])),
+        "advisories": list(entry.get("advisories", [])),
+        "recommended_actions": list(entry.get("recommended_actions", [])),
+        "previous_history_hash": str(entry.get("previous_history_hash", "")),
+    }
+
+
+def _compute_history_hash(entry: Dict[str, Any]) -> str:
+    encoded = json.dumps(
+        to_jsonable(_history_hash_basis(entry)),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _latest_history_hash(entries: List[Dict[str, Any]]) -> str:
+    for item in reversed(entries):
+        candidate = str(item.get("history_hash", ""))
+        if _is_sha256_hex(candidate):
+            return candidate
+    return ""
+
+
+def _history_chain_summary(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
+    tracked_entries = 0
+    valid = True
+    broken_index = -1
+    broken_reason = ""
+    previous_hash = ""
+    latest_hash = ""
+
+    for idx, item in enumerate(entries):
+        entry_hash = str(item.get("history_hash", ""))
+        if not entry_hash:
+            continue
+
+        tracked_entries += 1
+        if not _is_sha256_hex(entry_hash):
+            valid = False
+            broken_index = idx
+            broken_reason = "history_hash format invalid"
+            break
+
+        stated_prev = str(item.get("previous_history_hash", ""))
+        if stated_prev != previous_hash:
+            valid = False
+            broken_index = idx
+            broken_reason = "previous_history_hash mismatch"
+            break
+
+        expected = _compute_history_hash(item)
+        if not _is_sha256_hex(expected) or expected != entry_hash:
+            valid = False
+            broken_index = idx
+            broken_reason = "history_hash verification failed"
+            break
+
+        latest_hash = entry_hash
+        previous_hash = entry_hash
+
+    return {
+        "enabled": tracked_entries > 0,
+        "valid": valid,
+        "tracked_entries": tracked_entries,
+        "legacy_entries": max(0, len(entries) - tracked_entries),
+        "broken_index": broken_index,
+        "broken_reason": broken_reason,
+        "latest_hash": latest_hash,
+    }
+
+
 def _parse_float(value: Any) -> float | None:
     try:
         return float(value)
@@ -235,6 +325,7 @@ def append_history(
     entries = _read_history(history_path)
     new_entry = _history_entry(payload)
     history_appended = True
+    trimmed = False
     if skip_if_unchanged and entries:
         last_fingerprint = str(entries[-1].get("status_fingerprint", ""))
         new_fingerprint = str(new_entry.get("status_fingerprint", ""))
@@ -242,11 +333,23 @@ def append_history(
             history_appended = False
 
     if history_appended:
+        previous_hash = _latest_history_hash(entries)
+        new_entry["previous_history_hash"] = previous_hash
+        new_entry["history_hash"] = _compute_history_hash(new_entry)
         entries.append(new_entry)
     if max_entries > 0 and len(entries) > max_entries:
+        trimmed = True
         entries = entries[-max_entries:]
+        # Rebase chain links after trim so retained history remains verifiable.
+        prev = ""
+        for item in entries:
+            item["previous_history_hash"] = prev
+            item["history_hash"] = _compute_history_hash(item)
+            prev = item["history_hash"]
 
-    if history_appended or not history_path.exists():
+    chain_summary = _history_chain_summary(entries)
+
+    if history_appended or trimmed or not history_path.exists():
         history_path.parent.mkdir(parents=True, exist_ok=True)
         with open(history_path, "w", encoding="utf-8") as handle:
             for item in entries:
@@ -257,6 +360,7 @@ def append_history(
         "recent_history": entries[-recent_limit:] if recent_limit > 0 else [],
         "history_trend": _history_trend(entries, recent_window=trend_window),
         "history_appended": history_appended,
+        "history_chain": chain_summary,
     }
 
 
@@ -351,6 +455,7 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     recent_history = payload.get("recent_history", [])
     history_trend = payload.get("history_trend", {})
     history_total_entries = payload.get("history_total_entries", 0)
+    history_chain = payload.get("history_chain", {})
     status_fingerprint = payload.get("status_fingerprint", "")
     history_appended = payload.get("history_appended", True)
     history_path = payload.get("history_path", "docs/NETWORK_HISTORY.jsonl")
@@ -423,6 +528,16 @@ Generated at: `{payload['generated_at_utc']}`
 - Status fingerprint: `{status_fingerprint}`
 
 {recent_history_lines}
+
+## History Integrity
+
+- Chain enabled: `{history_chain.get('enabled')}`
+- Chain valid: `{history_chain.get('valid')}`
+- Tracked entries: `{history_chain.get('tracked_entries')}`
+- Legacy entries: `{history_chain.get('legacy_entries')}`
+- Latest chain hash: `{history_chain.get('latest_hash') or '-'}`
+- Broken index: `{history_chain.get('broken_index')}`
+- Broken reason: `{history_chain.get('broken_reason') or '-'}`
 
 ## History Trend
 
@@ -538,6 +653,7 @@ def main() -> None:
     payload["recent_history"] = history_meta["recent_history"]
     payload["history_trend"] = history_meta["history_trend"]
     payload["history_appended"] = history_meta["history_appended"]
+    payload["history_chain"] = history_meta["history_chain"]
 
     markdown = render_markdown(payload)
     out_md.write_text(markdown, encoding="utf-8")

@@ -160,6 +160,7 @@ Health fields in JSON:
 - `production_readiness.checks`: strict production check breakdown
 - `recent_history`: latest history entries
 - `history_trend`: trend summary from recent history window
+- `history_chain`: append-only history integrity summary (`valid`, `broken_index`, `latest_hash`)
 - `status_fingerprint`: semantic status digest (timestamp-independent)
 - `history_appended`: whether a new history record was appended this run
 
@@ -178,6 +179,7 @@ python3 scripts/auto_verify_publish.py --production-checks
 
 Behavior:
 - With `--production-checks`, auto publish aborts if `status_ok=false`.
+- With `--production-checks`, auto publish also aborts if `history_chain.valid=false`.
 - Optional strict mode: add `--fail-on-warn` to block when `health_level=WARN`.
 - Use `--allow-failing-status` only when you explicitly want to publish degraded status.
 

@@ -45,20 +45,31 @@ Generated at: `2026-02-24T14:47:48.648006+00:00`
 ## Recent History
 
 - History file: `docs/NETWORK_HISTORY.jsonl`
-- Total history entries: `4`
-- History appended this run: `False`
+- Total history entries: `5`
+- History appended this run: `True`
 - Status fingerprint: `9eab5526ffa1dc26cf54b100a49c09e9a1666ec3815b0ac4eba2aadd6688c7e5`
 
 - `2026-02-24T14:39:45.490422+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
 - `2026-02-24T14:42:41.422634+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
 - `2026-02-24T14:44:56.308758+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
 - `2026-02-24T14:47:48.648006+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
+- `2026-02-24T14:47:48.648006+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
+
+## History Integrity
+
+- Chain enabled: `True`
+- Chain valid: `True`
+- Tracked entries: `1`
+- Legacy entries: `4`
+- Latest chain hash: `287647f16771f25e7c2491458c89e7b6a165a28a78c77b3ae545c0a36629fe8e`
+- Broken index: `-1`
+- Broken reason: `-`
 
 ## History Trend
 
 - Window size: `20`
-- Sample size: `4`
-- Health counts: `OK=0, WARN=4, DEGRADED=0`
+- Sample size: `5`
+- Health counts: `OK=0, WARN=5, DEGRADED=0`
 - Latest health: `WARN`
 - Previous health: `WARN`
 - Health changed: `False`
