@@ -25,7 +25,7 @@ from decentralized_ai_network_demo import (
     to_jsonable,
 )
 
-PROTOCOL_NAME = "Distributed Proof-of-Useful-Inference Network"
+PROTOCOL_NAME = "Autonomous AI Reward Network"
 PROTOCOL_ID = "dpuin-protocol"
 
 
@@ -570,7 +570,7 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     health = payload.get("health_level", "DEGRADED")
     balances = snapshot.get("balances", {})
 
-    return f"""# DPUIN Network Status
+    return f"""# Autonomous AI Reward Network Status (DPUIN)
 
 Generated at: `{payload['generated_at_utc']}`
 

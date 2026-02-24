@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Docker-oriented one-shot verifier and operator launcher for DPUIN."""
+"""Docker-oriented one-shot verifier and operator launcher for AIRN."""
 
 from __future__ import annotations
 
@@ -156,7 +156,7 @@ def run_operator_loop_mode(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run DPUIN one-shot Docker automation or operator loop.")
+    parser = argparse.ArgumentParser(description="Run AIRN one-shot Docker automation or operator loop.")
     parser.add_argument(
         "--mode",
         choices=["oneshot", "operator-loop"],

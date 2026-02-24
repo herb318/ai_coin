@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run full verification, regenerate DPUIN status view, and auto-publish if changed."""
+"""Run full verification, regenerate AIRN status view, and auto-publish if changed."""
 
 from __future__ import annotations
 
@@ -303,7 +303,7 @@ def should_block_publish(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Verify project and publish updated DPUIN status view docs automatically."
+        description="Verify project and publish updated AIRN status view docs automatically."
     )
     parser.add_argument(
         "--repo-root",
@@ -396,7 +396,7 @@ def main() -> None:
         cwd=repo,
     )
     commit_msg = (
-        f"chore: auto-update DPUIN status view ({datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')})"
+        f"chore: auto-update AIRN status view ({datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')})"
     )
     run(["git", "commit", "-m", commit_msg], cwd=repo)
     if not args.skip_push:

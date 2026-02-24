@@ -1,6 +1,6 @@
 # Docker Automation
 
-Run the full DPUIN validation pipeline in one command.
+Run the full Autonomous AI Reward Network validation pipeline in one command.
 
 ## 1) One-shot (default, non-production)
 

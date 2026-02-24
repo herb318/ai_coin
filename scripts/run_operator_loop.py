@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Continuous local operator loop for DPUIN."""
+"""Continuous local operator loop for AIRN."""
 
 from __future__ import annotations
 

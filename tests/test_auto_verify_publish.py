@@ -18,7 +18,7 @@ def _base_status_payload() -> dict:
     payload = {
         "generated_at_utc": datetime(2026, 2, 24, 15, 0, 0, tzinfo=timezone.utc).isoformat(),
         "mode": "network-status-agent",
-        "protocol_name": "Distributed Proof-of-Useful-Inference Network",
+        "protocol_name": "Autonomous AI Reward Network",
         "protocol_id": "dpuin-protocol",
         "status_ok": True,
         "health_level": "OK",

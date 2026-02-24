@@ -28,7 +28,7 @@ def _quick_start_text(binary_name: str) -> str:
         run_qa = f"./{binary_name} --mode qa"
     return "\n".join(
         [
-            "DPUIN quick start",
+            "Autonomous AI Reward Network quick start",
             "",
             "1) Copy .env.example to .env and fill private values.",
             f"2) Run demo: {run_demo}",

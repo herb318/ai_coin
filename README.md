@@ -1,9 +1,11 @@
-# Distributed Proof-of-Useful-Inference Network (DPUIN)
+# Autonomous AI Reward Network (DPUIN)
 
 A decentralized AI network prototype where participants contribute useful inference and receive deterministic rewards.
 
 Technical project identifier:
 - `dpuin-protocol`
+Repository:
+- `herb318/autonomous-ai-reward-network`
 
 ## Automation Provenance
 

@@ -95,7 +95,7 @@ Observed local run behavior:
 Run continuously in background:
 
 ```bash
-cd /Users/j/Desktop/작업/ai_coin
+cd <repo-root>
 nohup python3 scripts/run_operator_loop.py --interval-seconds 120 --include-status-agent > runtime/operator_loop.out 2>&1 &
 ```
 

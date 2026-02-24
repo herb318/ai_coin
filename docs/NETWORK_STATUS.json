@@ -1,7 +1,7 @@
 {
-  "generated_at_utc": "2026-02-24T16:26:47.005970+00:00",
+  "generated_at_utc": "2026-02-24T16:31:07.766677+00:00",
   "mode": "network-status-agent",
-  "protocol_name": "Distributed Proof-of-Useful-Inference Network",
+  "protocol_name": "Autonomous AI Reward Network",
   "protocol_id": "dpuin-protocol",
   "status_ok": true,
   "health_level": "WARN",
@@ -47,8 +47,8 @@
     "started_by_runner": "",
     "started_at_utc": "",
     "last_runner_id": "runner-unknown",
-    "last_run_at_utc": "2026-02-24T16:26:46.905848+00:00",
-    "total_runs": 20,
+    "last_run_at_utc": "2026-02-24T16:27:12.659226+00:00",
+    "total_runs": 21,
     "start_attempts": 0
   },
   "snapshot": {
@@ -239,32 +239,10 @@
       "applied_upgrades": []
     }
   ],
-  "status_fingerprint": "56146194812ec9aaf5b2a1653c434b1981a04da461d709086daba06a24f601dc",
+  "status_fingerprint": "f14800878318d63b84d60b41b3f486addcdf249f91f2a439a8d6f2d503046773",
   "history_path": "docs/NETWORK_HISTORY.jsonl",
-  "history_total_entries": 10,
+  "history_total_entries": 11,
   "recent_history": [
-    {
-      "generated_at_utc": "2026-02-24T14:47:48.648006+00:00",
-      "status_fingerprint": "9eab5526ffa1dc26cf54b100a49c09e9a1666ec3815b0ac4eba2aadd6688c7e5",
-      "health_level": "WARN",
-      "status_ok": true,
-      "production_checks": false,
-      "qa_overall_passed": true,
-      "network_size_nodes": 5,
-      "avg_winner_latency_ms": 45.6,
-      "requests_executed": 5,
-      "epoch": 5,
-      "minted_supply": "4807425.3741",
-      "status_reasons": [],
-      "advisories": [
-        "production_readiness_false"
-      ],
-      "recommended_actions": [
-        "Generate strict readiness view with `python3 scripts/network_status_agent.py --production-checks`."
-      ],
-      "previous_history_hash": "42933878937d68a6e6feb663f6c1a603d4099f1d0b1e198bf88330dc3d04f4a7",
-      "history_hash": "ee1ff29be220d0c69c53cdae70803f8b5272afdf6c543900c491eb87b96866f7"
-    },
     {
       "generated_at_utc": "2026-02-24T16:11:44.386346+00:00",
       "status_fingerprint": "12238e72ac3555a72e611cf6c7b2a2f0af8dcd7fe7869dcc7f4687f59a2f36ae",
@@ -352,14 +330,36 @@
       ],
       "previous_history_hash": "b3e4671f9c5344e1a30de61edeebc1a43c4590e978084ad5f423035f41bc82b4",
       "history_hash": "85335b365e9f6b127b8c511672d6703c64fd625710483938642b629ecc942b47"
+    },
+    {
+      "generated_at_utc": "2026-02-24T16:31:07.766677+00:00",
+      "status_fingerprint": "f14800878318d63b84d60b41b3f486addcdf249f91f2a439a8d6f2d503046773",
+      "health_level": "WARN",
+      "status_ok": true,
+      "production_checks": false,
+      "qa_overall_passed": true,
+      "network_size_nodes": 5,
+      "avg_winner_latency_ms": 45.6,
+      "requests_executed": 5,
+      "epoch": 5,
+      "minted_supply": "4807425.3741",
+      "status_reasons": [],
+      "advisories": [
+        "production_readiness_false"
+      ],
+      "recommended_actions": [
+        "Generate strict readiness view with `python3 scripts/network_status_agent.py --production-checks`."
+      ],
+      "previous_history_hash": "85335b365e9f6b127b8c511672d6703c64fd625710483938642b629ecc942b47",
+      "history_hash": "a10b19164417897e3951b1dc00b76dc4e185f55613651390fbe3c3ed3c0e1310"
     }
   ],
   "history_trend": {
     "recent_window": 20,
-    "sample_size": 10,
+    "sample_size": 11,
     "health_counts": {
       "OK": 0,
-      "WARN": 10,
+      "WARN": 11,
       "DEGRADED": 0
     },
     "latest_health": "WARN",
@@ -374,10 +374,10 @@
   "history_chain": {
     "enabled": true,
     "valid": true,
-    "tracked_entries": 10,
+    "tracked_entries": 11,
     "legacy_entries": 0,
     "broken_index": -1,
     "broken_reason": "",
-    "latest_hash": "85335b365e9f6b127b8c511672d6703c64fd625710483938642b629ecc942b47"
+    "latest_hash": "a10b19164417897e3951b1dc00b76dc4e185f55613651390fbe3c3ed3c0e1310"
   }
 }
