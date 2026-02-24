@@ -14,6 +14,7 @@ Verification details:
 - [Network Status](docs/NETWORK_STATUS.md)
 - [Cross-Platform Release](docs/CROSS_PLATFORM_RELEASE.md)
 - [AI Usage Guide](docs/AI_USAGE_GUIDE.md)
+- [Docker Automation](docs/DOCKER_AUTOMATION.md)
 
 ## What This Project Is
 
@@ -109,6 +110,26 @@ Continuous loop operator (runs QA+demo repeatedly):
 
 ```bash
 nohup python3 scripts/run_operator_loop.py --interval-seconds 120 --include-status-agent > runtime/operator_loop.out 2>&1 &
+```
+
+## Docker One-Shot Automation
+
+Run full validation in one command:
+
+```bash
+docker compose run --rm --build oneshot
+```
+
+Strict production checks (requires `.env` with valid private values):
+
+```bash
+docker compose --profile production run --rm --build oneshot-prod
+```
+
+Containerized operator loop:
+
+```bash
+docker compose --profile operator up --build operator-loop
 ```
 
 ## Final Launch Sequence

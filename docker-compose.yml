@@ -1,0 +1,49 @@
+services:
+  oneshot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dpuin-protocol:local
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command:
+      - --mode
+      - oneshot
+
+  oneshot-prod:
+    profiles: ["production"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dpuin-protocol:local
+    working_dir: /app
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+    command:
+      - --mode
+      - oneshot
+      - --production-checks
+
+  operator-loop:
+    profiles: ["operator"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dpuin-protocol:local
+    working_dir: /app
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+    command:
+      - --mode
+      - operator-loop
+      - --production-checks
+      - --include-status-agent
+      - --interval-seconds
+      - "120"
+      - --max-consecutive-failures
+      - "5"

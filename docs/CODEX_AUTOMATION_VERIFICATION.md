@@ -28,7 +28,9 @@ python3 scripts/sanitize_for_git_open.py --root .
 
 ## Last Verification
 
-- Timestamp (UTC): `2026-02-24 16:02:56 UTC`
-- `python3 -m unittest discover -s tests -v`: pass (`90/90`)
+- Timestamp (UTC): `2026-02-24 16:27:12 UTC`
+- `python3 -m unittest discover -s tests -v`: pass (`94/94`)
 - `python3 -m bandit -r . -q`: pass
 - `python3 scripts/sanitize_for_git_open.py --root .`: pass
+- `python3 scripts/docker_runner.py --mode oneshot`: pass
+- `python3 scripts/docker_runner.py --mode oneshot --production-checks`: blocked as expected without full production `.env`

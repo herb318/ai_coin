@@ -1,6 +1,6 @@
 # DPUIN Network Status
 
-Generated at: `2026-02-24T16:19:44.805010+00:00`
+Generated at: `2026-02-24T16:26:47.005970+00:00`
 
 ## Summary
 
@@ -52,33 +52,33 @@ Generated at: `2026-02-24T16:19:44.805010+00:00`
 ## Recent History
 
 - History file: `docs/NETWORK_HISTORY.jsonl`
-- Total history entries: `9`
+- Total history entries: `10`
 - History appended this run: `True`
 - History append blocked: `False`
 - History chain repaired: `False`
-- Status fingerprint: `c93cc023f8275a8b4d9a4c19ea29e18c587a30a728337761d7580badc5fc5bb4`
+- Status fingerprint: `56146194812ec9aaf5b2a1653c434b1981a04da461d709086daba06a24f601dc`
 
-- `2026-02-24T14:47:48.648006+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
 - `2026-02-24T14:47:48.648006+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
 - `2026-02-24T16:11:44.386346+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
 - `2026-02-24T16:12:56.837807+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
 - `2026-02-24T16:19:44.805010+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
+- `2026-02-24T16:26:47.005970+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
 
 ## History Integrity
 
 - Chain enabled: `True`
 - Chain valid: `True`
-- Tracked entries: `9`
+- Tracked entries: `10`
 - Legacy entries: `0`
-- Latest chain hash: `b3e4671f9c5344e1a30de61edeebc1a43c4590e978084ad5f423035f41bc82b4`
+- Latest chain hash: `85335b365e9f6b127b8c511672d6703c64fd625710483938642b629ecc942b47`
 - Broken index: `-1`
 - Broken reason: `-`
 
 ## History Trend
 
 - Window size: `20`
-- Sample size: `9`
-- Health counts: `OK=0, WARN=9, DEGRADED=0`
+- Sample size: `10`
+- Health counts: `OK=0, WARN=10, DEGRADED=0`
 - Latest health: `WARN`
 - Previous health: `WARN`
 - Health changed: `False`
@@ -92,7 +92,7 @@ Generated at: `2026-02-24T16:19:44.805010+00:00`
 - Successful open: `False`
 - Started by: ``
 - Last runner: `runner-unknown`
-- Total runs: `18`
+- Total runs: `20`
 - Start attempts: `0`
 
 ## Preflight Checks
