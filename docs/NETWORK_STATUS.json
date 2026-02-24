@@ -117,24 +117,8 @@
   ],
   "status_fingerprint": "9eab5526ffa1dc26cf54b100a49c09e9a1666ec3815b0ac4eba2aadd6688c7e5",
   "history_path": "docs/NETWORK_HISTORY.jsonl",
-  "history_total_entries": 5,
+  "history_total_entries": 6,
   "recent_history": [
-    {
-      "generated_at_utc": "2026-02-24T14:39:45.490422+00:00",
-      "health_level": "WARN",
-      "status_ok": true,
-      "production_checks": false,
-      "qa_overall_passed": true,
-      "network_size_nodes": 5,
-      "avg_winner_latency_ms": 45.6,
-      "requests_executed": 5,
-      "epoch": 5,
-      "minted_supply": "4807425.3741",
-      "status_reasons": [],
-      "advisories": [
-        "production_readiness_false"
-      ]
-    },
     {
       "generated_at_utc": "2026-02-24T14:42:41.422634+00:00",
       "health_level": "WARN",
@@ -149,7 +133,9 @@
       "status_reasons": [],
       "advisories": [
         "production_readiness_false"
-      ]
+      ],
+      "previous_history_hash": "7e4c71c9d171a4577dc55666ec653f42b679728d3cfd77b2112fede6dc9e3fa9",
+      "history_hash": "9c69992f5b7f83973731fc4ee00219a921065f89ec64b0c5a1f5be45c15ffe46"
     },
     {
       "generated_at_utc": "2026-02-24T14:44:56.308758+00:00",
@@ -168,7 +154,9 @@
       ],
       "recommended_actions": [
         "Generate strict readiness view with `python3 scripts/network_status_agent.py --production-checks`."
-      ]
+      ],
+      "previous_history_hash": "9c69992f5b7f83973731fc4ee00219a921065f89ec64b0c5a1f5be45c15ffe46",
+      "history_hash": "a1a15e70a35a665656cdd2cb7af00cd6d1bdb1febc36cfc0515b0c4b2b2d62f8"
     },
     {
       "generated_at_utc": "2026-02-24T14:47:48.648006+00:00",
@@ -188,7 +176,9 @@
       ],
       "recommended_actions": [
         "Generate strict readiness view with `python3 scripts/network_status_agent.py --production-checks`."
-      ]
+      ],
+      "previous_history_hash": "a1a15e70a35a665656cdd2cb7af00cd6d1bdb1febc36cfc0515b0c4b2b2d62f8",
+      "history_hash": "d813b940cf6b02a8a56c261240cdca595fd2c0bef83c32c2dc2f46ddc1f14db0"
     },
     {
       "generated_at_utc": "2026-02-24T14:47:48.648006+00:00",
@@ -209,16 +199,38 @@
       "recommended_actions": [
         "Generate strict readiness view with `python3 scripts/network_status_agent.py --production-checks`."
       ],
-      "previous_history_hash": "",
-      "history_hash": "287647f16771f25e7c2491458c89e7b6a165a28a78c77b3ae545c0a36629fe8e"
+      "previous_history_hash": "d813b940cf6b02a8a56c261240cdca595fd2c0bef83c32c2dc2f46ddc1f14db0",
+      "history_hash": "42933878937d68a6e6feb663f6c1a603d4099f1d0b1e198bf88330dc3d04f4a7"
+    },
+    {
+      "generated_at_utc": "2026-02-24T14:47:48.648006+00:00",
+      "status_fingerprint": "9eab5526ffa1dc26cf54b100a49c09e9a1666ec3815b0ac4eba2aadd6688c7e5",
+      "health_level": "WARN",
+      "status_ok": true,
+      "production_checks": false,
+      "qa_overall_passed": true,
+      "network_size_nodes": 5,
+      "avg_winner_latency_ms": 45.6,
+      "requests_executed": 5,
+      "epoch": 5,
+      "minted_supply": "4807425.3741",
+      "status_reasons": [],
+      "advisories": [
+        "production_readiness_false"
+      ],
+      "recommended_actions": [
+        "Generate strict readiness view with `python3 scripts/network_status_agent.py --production-checks`."
+      ],
+      "previous_history_hash": "42933878937d68a6e6feb663f6c1a603d4099f1d0b1e198bf88330dc3d04f4a7",
+      "history_hash": "ee1ff29be220d0c69c53cdae70803f8b5272afdf6c543900c491eb87b96866f7"
     }
   ],
   "history_trend": {
     "recent_window": 20,
-    "sample_size": 5,
+    "sample_size": 6,
     "health_counts": {
       "OK": 0,
-      "WARN": 5,
+      "WARN": 6,
       "DEGRADED": 0
     },
     "latest_health": "WARN",
@@ -228,13 +240,15 @@
     "epoch_delta": 0
   },
   "history_appended": true,
+  "history_append_blocked": false,
+  "history_chain_repaired": true,
   "history_chain": {
     "enabled": true,
     "valid": true,
-    "tracked_entries": 1,
-    "legacy_entries": 4,
+    "tracked_entries": 6,
+    "legacy_entries": 0,
     "broken_index": -1,
     "broken_reason": "",
-    "latest_hash": "287647f16771f25e7c2491458c89e7b6a165a28a78c77b3ae545c0a36629fe8e"
+    "latest_hash": "ee1ff29be220d0c69c53cdae70803f8b5272afdf6c543900c491eb87b96866f7"
   }
 }

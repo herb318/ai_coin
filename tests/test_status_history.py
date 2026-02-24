@@ -39,6 +39,8 @@ class TestStatusHistory(unittest.TestCase):
             self.assertEqual(len(meta["recent_history"][0]["history_hash"]), 64)
             self.assertTrue(meta["history_chain"]["enabled"])
             self.assertTrue(meta["history_chain"]["valid"])
+            self.assertFalse(meta["history_append_blocked"])
+            self.assertFalse(meta["history_chain_repaired"])
 
     def test_append_history_trims_to_max_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -50,6 +52,7 @@ class TestStatusHistory(unittest.TestCase):
             self.assertTrue(meta["history_appended"])
             self.assertEqual([item["epoch"] for item in meta["recent_history"]], [5, 6, 7])
             self.assertTrue(meta["history_chain"]["valid"])
+            self.assertFalse(meta["history_append_blocked"])
 
             lines = history_path.read_text(encoding="utf-8").strip().splitlines()
             self.assertEqual(len(lines), 3)
@@ -66,6 +69,7 @@ class TestStatusHistory(unittest.TestCase):
             parsed = [json.loads(line) for line in history_path.read_text(encoding="utf-8").splitlines() if line.strip()]
             self.assertEqual(len(parsed), 3)
             self.assertTrue(meta["history_chain"]["valid"])
+            self.assertTrue(meta["history_chain_repaired"])
 
     def test_append_history_skips_duplicate_fingerprint(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -100,6 +104,7 @@ class TestStatusHistory(unittest.TestCase):
             self.assertTrue(meta["history_appended"])
             self.assertEqual(meta["history_total_entries"], 2)
             self.assertTrue(meta["history_chain"]["valid"])
+            self.assertFalse(meta["history_append_blocked"])
 
     def test_append_history_chain_links_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -134,6 +139,31 @@ class TestStatusHistory(unittest.TestCase):
             self.assertFalse(meta["history_chain"]["valid"])
             self.assertGreaterEqual(meta["history_chain"]["broken_index"], 0)
             self.assertTrue(meta["history_chain"]["broken_reason"])
+            self.assertFalse(meta["history_appended"])
+            self.assertTrue(meta["history_append_blocked"])
+            self.assertEqual(meta["history_total_entries"], 2)
+
+    def test_append_history_migrates_legacy_entries_to_chain(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            history_path = Path(tmp_dir) / "NETWORK_HISTORY.jsonl"
+            legacy_entries = [
+                {"generated_at_utc": "2026-02-24T14:00:01+00:00", "epoch": 1, "health_level": "OK"},
+                {"generated_at_utc": "2026-02-24T14:00:02+00:00", "epoch": 2, "health_level": "WARN"},
+            ]
+            history_path.write_text(
+                "\n".join(json.dumps(item, ensure_ascii=False) for item in legacy_entries) + "\n",
+                encoding="utf-8",
+            )
+
+            meta = append_history(history_path=history_path, payload=_payload(3), max_entries=10, recent_limit=5)
+            self.assertTrue(meta["history_chain"]["enabled"])
+            self.assertTrue(meta["history_chain"]["valid"])
+            self.assertEqual(meta["history_chain"]["legacy_entries"], 0)
+            self.assertTrue(meta["history_chain_repaired"])
+            self.assertFalse(meta["history_append_blocked"])
+
+            persisted = [json.loads(line) for line in history_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            self.assertTrue(all("history_hash" in item and "previous_history_hash" in item for item in persisted))
 
     def test_append_history_exposes_trend_summary(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

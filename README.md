@@ -163,6 +163,8 @@ Health fields in JSON:
 - `history_chain`: append-only history integrity summary (`valid`, `broken_index`, `latest_hash`)
 - `status_fingerprint`: semantic status digest (timestamp-independent)
 - `history_appended`: whether a new history record was appended this run
+- `history_append_blocked`: true when chain corruption blocks new append
+- `history_chain_repaired`: true when legacy history gets auto-migrated/repaired into a valid chain
 
 Advanced status-agent options:
 - `--no-history-dedupe`: append history even when fingerprint is unchanged

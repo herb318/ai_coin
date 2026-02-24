@@ -192,6 +192,23 @@ def _latest_history_hash(entries: List[Dict[str, Any]]) -> str:
     return ""
 
 
+def _rebuild_history_chain(entries: List[Dict[str, Any]]) -> tuple[List[Dict[str, Any]], bool]:
+    rebuilt: List[Dict[str, Any]] = []
+    previous_hash = ""
+    repaired = False
+    for raw_item in entries:
+        item = dict(raw_item)
+        old_prev = str(item.get("previous_history_hash", ""))
+        old_hash = str(item.get("history_hash", ""))
+        item["previous_history_hash"] = previous_hash
+        item["history_hash"] = _compute_history_hash(item)
+        if old_prev != item["previous_history_hash"] or old_hash != item["history_hash"]:
+            repaired = True
+        previous_hash = item["history_hash"]
+        rebuilt.append(item)
+    return rebuilt, repaired
+
+
 def _history_chain_summary(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
     tracked_entries = 0
     valid = True
@@ -323,33 +340,41 @@ def append_history(
     skip_if_unchanged: bool = True,
 ) -> Dict[str, Any]:
     entries = _read_history(history_path)
+    chain_before = _history_chain_summary(entries)
     new_entry = _history_entry(payload)
     history_appended = True
     trimmed = False
-    if skip_if_unchanged and entries:
-        last_fingerprint = str(entries[-1].get("status_fingerprint", ""))
-        new_fingerprint = str(new_entry.get("status_fingerprint", ""))
-        if last_fingerprint and new_fingerprint and last_fingerprint == new_fingerprint:
-            history_appended = False
+    history_chain_repaired = False
+    history_append_blocked = False
 
-    if history_appended:
-        previous_hash = _latest_history_hash(entries)
-        new_entry["previous_history_hash"] = previous_hash
-        new_entry["history_hash"] = _compute_history_hash(new_entry)
-        entries.append(new_entry)
-    if max_entries > 0 and len(entries) > max_entries:
-        trimmed = True
-        entries = entries[-max_entries:]
-        # Rebase chain links after trim so retained history remains verifiable.
-        prev = ""
-        for item in entries:
-            item["previous_history_hash"] = prev
-            item["history_hash"] = _compute_history_hash(item)
-            prev = item["history_hash"]
+    if chain_before["enabled"] and not chain_before["valid"]:
+        history_appended = False
+        history_append_blocked = True
+    else:
+        entries, repaired = _rebuild_history_chain(entries)
+        history_chain_repaired = history_chain_repaired or repaired
+
+        if skip_if_unchanged and entries:
+            last_fingerprint = str(entries[-1].get("status_fingerprint", ""))
+            new_fingerprint = str(new_entry.get("status_fingerprint", ""))
+            if last_fingerprint and new_fingerprint and last_fingerprint == new_fingerprint:
+                history_appended = False
+
+        if history_appended:
+            previous_hash = _latest_history_hash(entries)
+            new_entry["previous_history_hash"] = previous_hash
+            new_entry["history_hash"] = _compute_history_hash(new_entry)
+            entries.append(new_entry)
+
+        if max_entries > 0 and len(entries) > max_entries:
+            trimmed = True
+            entries = entries[-max_entries:]
+            entries, repaired = _rebuild_history_chain(entries)
+            history_chain_repaired = history_chain_repaired or repaired
 
     chain_summary = _history_chain_summary(entries)
 
-    if history_appended or trimmed or not history_path.exists():
+    if history_appended or trimmed or history_chain_repaired or not history_path.exists():
         history_path.parent.mkdir(parents=True, exist_ok=True)
         with open(history_path, "w", encoding="utf-8") as handle:
             for item in entries:
@@ -360,6 +385,8 @@ def append_history(
         "recent_history": entries[-recent_limit:] if recent_limit > 0 else [],
         "history_trend": _history_trend(entries, recent_window=trend_window),
         "history_appended": history_appended,
+        "history_append_blocked": history_append_blocked,
+        "history_chain_repaired": history_chain_repaired,
         "history_chain": chain_summary,
     }
 
@@ -458,6 +485,8 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     history_chain = payload.get("history_chain", {})
     status_fingerprint = payload.get("status_fingerprint", "")
     history_appended = payload.get("history_appended", True)
+    history_append_blocked = payload.get("history_append_blocked", False)
+    history_chain_repaired = payload.get("history_chain_repaired", False)
     history_path = payload.get("history_path", "docs/NETWORK_HISTORY.jsonl")
     launch_error = payload.get("launch_error", "")
     qa_error = payload.get("qa_error", "")
@@ -525,6 +554,8 @@ Generated at: `{payload['generated_at_utc']}`
 - History file: `{history_path}`
 - Total history entries: `{history_total_entries}`
 - History appended this run: `{history_appended}`
+- History append blocked: `{history_append_blocked}`
+- History chain repaired: `{history_chain_repaired}`
 - Status fingerprint: `{status_fingerprint}`
 
 {recent_history_lines}
@@ -653,6 +684,8 @@ def main() -> None:
     payload["recent_history"] = history_meta["recent_history"]
     payload["history_trend"] = history_meta["history_trend"]
     payload["history_appended"] = history_meta["history_appended"]
+    payload["history_append_blocked"] = history_meta["history_append_blocked"]
+    payload["history_chain_repaired"] = history_meta["history_chain_repaired"]
     payload["history_chain"] = history_meta["history_chain"]
 
     markdown = render_markdown(payload)
