@@ -8,17 +8,26 @@ import os
 import re
 import sys
 from dataclasses import dataclass
-from typing import List
+from typing import List, Tuple
 
 IGNORE_DIRS = {".git", "__pycache__", ".venv", "venv", "node_modules", "runtime"}
 PLACEHOLDER_TOKENS = {"change_me", "example", "placeholder", "your_", "dev_", "xxxx", "redacted"}
 
 GITIGNORE_REQUIRED = [".env", ".env.*", "!.env.example"]
 
-GENERIC_SECRET_PATTERNS = [
-    re.compile(r"sk-[A-Za-z0-9]{20,}"),
-    re.compile(r"ghp_[A-Za-z0-9]{30,}"),
-    re.compile(r"AIza[0-9A-Za-z\-_]{35}"),
+GENERIC_SECRET_PATTERNS: List[Tuple[str, re.Pattern[str]]] = [
+    ("Potential OpenAI API key pattern", re.compile(r"sk-[A-Za-z0-9]{20,}")),
+    ("Potential GitHub classic token pattern", re.compile(r"ghp_[A-Za-z0-9]{30,}")),
+    ("Potential GitHub fine-grained token pattern", re.compile(r"github_pat_[A-Za-z0-9_]{20,}")),
+    ("Potential Google API key pattern", re.compile(r"AIza[0-9A-Za-z\-_]{35}")),
+    ("Potential Telegram bot token pattern", re.compile(r"\b[0-9]{8,10}:[A-Za-z0-9_-]{35}\b")),
+    ("Potential Slack token pattern", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b")),
+    (
+        "Potential JWT token pattern",
+        re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"),
+    ),
+    ("Potential private key material", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----")),
+    ("Potential credential-in-URL pattern", re.compile(r"https?://[^/\s:@]+:[^@\s]+@[^/\s]+")),
 ]
 
 ENV_SECRET_PATTERN = re.compile(
@@ -39,6 +48,23 @@ class Finding:
 def likely_placeholder(value: str) -> bool:
     lowered = value.lower()
     return any(token in lowered for token in PLACEHOLDER_TOKENS)
+
+
+def redact_secret(value: str, left: int = 4, right: int = 4) -> str:
+    token = value.strip()
+    if not token:
+        return ""
+    if len(token) <= left + right:
+        return "*" * len(token)
+    return f"{token[:left]}...{token[-right:]}"
+
+
+def sanitize_snippet(snippet: str) -> str:
+    redacted = snippet
+    for _, pattern in GENERIC_SECRET_PATTERNS:
+        redacted = pattern.sub(lambda match: redact_secret(match.group(0)), redacted)
+    redacted = HEX_WALLET_PATTERN.sub(lambda match: redact_secret(match.group(0)), redacted)
+    return redacted
 
 
 def scan_file(file_path: str) -> List[Finding]:
@@ -64,18 +90,18 @@ def scan_file(file_path: str) -> List[Finding]:
                         file_path=file_path,
                         line_no=idx,
                         reason=f"Non-placeholder value for {key}",
-                        snippet=stripped[:160],
+                        snippet=f"{key}={redact_secret(value)}",
                     )
                 )
 
-        for pattern in GENERIC_SECRET_PATTERNS:
+        for reason, pattern in GENERIC_SECRET_PATTERNS:
             if pattern.search(line):
                 findings.append(
                     Finding(
                         file_path=file_path,
                         line_no=idx,
-                        reason="Potential API token pattern",
-                        snippet=stripped[:160],
+                        reason=reason,
+                        snippet=sanitize_snippet(stripped[:220]),
                     )
                 )
 
@@ -85,7 +111,7 @@ def scan_file(file_path: str) -> List[Finding]:
                     file_path=file_path,
                     line_no=idx,
                     reason="Potential wallet address found outside template",
-                    snippet=stripped[:160],
+                    snippet=sanitize_snippet(stripped[:220]),
                 )
             )
 

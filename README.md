@@ -110,6 +110,12 @@ python3 -m bandit -r .
 python3 scripts/sanitize_for_git_open.py --root .
 ```
 
+Sanitize scanner coverage now includes:
+- env secret keys (`NETWORK_SHARED_SECRET`, `PRIVATE_API_TOKEN`, `PRIVATE_RPC_URL`, `WALLET_*`)
+- common token formats (OpenAI, GitHub, Google, Telegram, Slack, JWT)
+- private key headers and credential-in-URL patterns
+- redacted output snippets (no raw token echo in scan logs)
+
 ## Tests
 
 ```bash
