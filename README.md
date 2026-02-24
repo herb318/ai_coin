@@ -34,6 +34,7 @@ Verification details:
 3. Safety first:
 - Mainnet cannot open until mandatory preflight checks pass.
 - HMAC auth, replay protection, timestamp skew validation, and rate limit are enforced.
+- `request_id` format is validated and enforced as network-wide unique.
 
 4. Public transparency:
 - Reward equations and treasury splits are documented.

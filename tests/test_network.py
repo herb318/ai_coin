@@ -194,6 +194,26 @@ class TestSecurity(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate request_id"):
             net.process_request(second)
 
+    def test_duplicate_request_id_across_nodes_is_blocked(self) -> None:
+        net = TranslationNetwork()
+        net.run_preflight_checks(security_scan_passed=True, production_mode=False)
+        net.open_mainnet()
+
+        first = net.security.build_envelope("dup-request-id-global", "node-sea-1", "안녕하세요, 회의에 참석해 주셔서 감사합니다.")
+        second = net.security.build_envelope("dup-request-id-global", "node-tyo-2", "질문이 있으면 언제든지 말씀해 주세요.")
+        net.process_request(first)
+        with self.assertRaisesRegex(ValueError, "duplicate request_id"):
+            net.process_request(second)
+
+    def test_invalid_request_id_format_is_blocked(self) -> None:
+        net = TranslationNetwork()
+        net.run_preflight_checks(security_scan_passed=True, production_mode=False)
+        net.open_mainnet()
+
+        env = net.security.build_envelope("bad request id", "node-sea-1", "질문이 있으면 언제든지 말씀해 주세요.")
+        with self.assertRaisesRegex(ValueError, "invalid request_id format"):
+            net.process_request(env)
+
     def test_stale_timestamp_is_blocked(self) -> None:
         net = TranslationNetwork()
         net.run_preflight_checks(security_scan_passed=True, production_mode=False)

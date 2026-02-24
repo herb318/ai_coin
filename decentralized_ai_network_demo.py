@@ -631,6 +631,7 @@ class UpgradeProposal:
 
 class RequestSecurity:
     REQUEST_ID_MAX_CHARS = 128
+    REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
     SOURCE_TEXT_MAX_CHARS = 4096
     NONCE_HEX_LEN = 32
     SIGNATURE_HEX_LEN = 64
@@ -684,6 +685,8 @@ class RequestSecurity:
         request_id = request_id.strip()
         if not request_id or len(request_id) > self.REQUEST_ID_MAX_CHARS:
             return False, "invalid request_id"
+        if not self.REQUEST_ID_PATTERN.fullmatch(request_id):
+            return False, "invalid request_id format"
 
         node_id = envelope["node_id"]
         if not isinstance(node_id, str):
@@ -743,7 +746,7 @@ class RequestSecurity:
         if nonce_key in self.used_nonces:
             return False, "replay detected (nonce reused)"
 
-        request_key = f"{node_id}:{request_id}"
+        request_key = request_id
         if request_key in self.used_request_ids:
             return False, "duplicate request_id"
 
@@ -1169,6 +1172,38 @@ class SecurityQAAgent(QAAgent):
             duplicate_request_blocked = "duplicate request_id" in str(exc)
             duplicate_request_reason = str(exc)
 
+        cross_node_first = net.security.build_envelope(
+            "qa-security-cross-node-dup",
+            "node-sea-1",
+            "안녕하세요, 회의에 참석해 주셔서 감사합니다.",
+        )
+        net.process_request(cross_node_first)
+        cross_node_duplicate = net.security.build_envelope(
+            "qa-security-cross-node-dup",
+            "node-tyo-2",
+            "질문이 있으면 언제든지 말씀해 주세요.",
+        )
+        cross_node_duplicate_blocked = False
+        cross_node_duplicate_reason = ""
+        try:
+            net.process_request(cross_node_duplicate)
+        except ValueError as exc:
+            cross_node_duplicate_blocked = "duplicate request_id" in str(exc)
+            cross_node_duplicate_reason = str(exc)
+
+        invalid_request_id = net.security.build_envelope(
+            "qa security bad id",
+            "node-sea-1",
+            "질문이 있으면 언제든지 말씀해 주세요.",
+        )
+        invalid_request_id_blocked = False
+        invalid_request_id_reason = ""
+        try:
+            net.process_request(invalid_request_id)
+        except ValueError as exc:
+            invalid_request_id_blocked = "invalid request_id format" in str(exc)
+            invalid_request_id_reason = str(exc)
+
         stale_timestamp = net.security.build_envelope(
             "qa-security-stale-ts",
             "node-sea-1",
@@ -1214,6 +1249,8 @@ class SecurityQAAgent(QAAgent):
             and nonce_blocked
             and oversized_blocked
             and duplicate_request_blocked
+            and cross_node_duplicate_blocked
+            and invalid_request_id_blocked
             and stale_timestamp_blocked
             and rate_limit_blocked
         )
@@ -1234,6 +1271,10 @@ class SecurityQAAgent(QAAgent):
                 "oversized_reason": oversized_reason,
                 "duplicate_request_blocked": duplicate_request_blocked,
                 "duplicate_request_reason": duplicate_request_reason,
+                "cross_node_duplicate_blocked": cross_node_duplicate_blocked,
+                "cross_node_duplicate_reason": cross_node_duplicate_reason,
+                "invalid_request_id_blocked": invalid_request_id_blocked,
+                "invalid_request_id_reason": invalid_request_id_reason,
                 "stale_timestamp_blocked": stale_timestamp_blocked,
                 "stale_timestamp_reason": stale_timestamp_reason,
                 "rate_limit_blocked": rate_limit_blocked,
