@@ -168,6 +168,19 @@ class TestSecurity(unittest.TestCase):
         env = net.security.build_envelope("unknown-node-test", "node-evil-9", "안녕하세요, 회의에 참석해 주셔서 감사합니다.")
         with self.assertRaisesRegex(ValueError, "unknown node_id"):
             net.process_request(env)
+        self.assertEqual(net.slash_points[TranslationNetwork.INVALID_SENDER_SLASH_KEY], 1)
+        self.assertNotIn("node-evil-9", net.slash_points)
+
+    def test_invalid_node_type_is_bucketed_under_invalid_sender_slash(self) -> None:
+        net = TranslationNetwork()
+        net.run_preflight_checks(security_scan_passed=True, production_mode=False)
+        net.open_mainnet()
+
+        env = net.security.build_envelope("invalid-node-type", "node-sea-1", "안녕하세요, 회의에 참석해 주셔서 감사합니다.")
+        env["node_id"] = {"unexpected": "object"}
+        with self.assertRaisesRegex(ValueError, "invalid node_id type"):
+            net.process_request(env)
+        self.assertEqual(net.slash_points[TranslationNetwork.INVALID_SENDER_SLASH_KEY], 1)
 
     def test_invalid_nonce_format_is_blocked(self) -> None:
         net = TranslationNetwork()

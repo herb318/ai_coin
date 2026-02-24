@@ -830,6 +830,8 @@ class RequestSecurity:
 
 
 class TranslationNetwork:
+    INVALID_SENDER_SLASH_KEY = "__invalid_sender__"
+
     def __init__(self, identity_registry: Optional[IdentityRegistry] = None, strict_secret_from_env: bool = False) -> None:
         self.model_version = "llm-shard-v1.0"
         self.epoch = 0
@@ -865,6 +867,12 @@ class TranslationNetwork:
         )
         self.slash_points: Dict[str, int] = defaultdict(int)
         self.upgrades: Dict[str, UpgradeProposal] = {}
+
+    def _record_slash(self, node_id: Any) -> None:
+        candidate = str(node_id).strip() if isinstance(node_id, str) else ""
+        known_nodes = {node.node_id for node in self.nodes}
+        key = candidate if candidate in known_nodes else self.INVALID_SENDER_SLASH_KEY
+        self.slash_points[key] += 1
 
     @staticmethod
     def _is_strong_shared_secret(secret: str) -> bool:
@@ -976,14 +984,12 @@ class TranslationNetwork:
 
         ok, reason = self.security.verify(envelope)
         if not ok:
-            node_id = str(envelope.get("node_id", "unknown"))
-            self.slash_points[node_id] += 1
+            self._record_slash(envelope.get("node_id"))
             raise ValueError(f"request rejected: {reason}")
 
         request_id = str(envelope["request_id"]).strip()
         if request_id in self.ledger_request_ids:
-            node_id = str(envelope.get("node_id", "unknown"))
-            self.slash_points[node_id] += 1
+            self._record_slash(envelope.get("node_id"))
             raise ValueError("request rejected: duplicate request_id")
 
         source_text = str(envelope["source_text"]).strip()

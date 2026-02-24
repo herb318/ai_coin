@@ -38,6 +38,7 @@ Verification details:
 - Verified envelope fields are canonicalized (trimmed) before inference/ledger processing.
 - Security runtime config is fail-closed validated (`max_skew_seconds`, `max_requests_per_minute`, `max_seen_entries`).
 - `source_text` control characters are rejected to reduce payload abuse/log injection risk.
+- Invalid/unknown sender penalties are bucketed to a fixed key to avoid slash-map pollution.
 
 4. Public transparency:
 - Reward equations and treasury splits are documented.
