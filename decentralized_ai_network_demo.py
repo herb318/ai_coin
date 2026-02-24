@@ -339,6 +339,18 @@ class UnstoppableLaunchState:
 class UnstoppableLaunchSentinel:
     MAX_ID_FIELD_LEN = 128
     MAX_TIME_FIELD_LEN = 64
+    STATE_FIELDS = {
+        "owner_id",
+        "armed",
+        "unstoppable_started",
+        "successful_open",
+        "started_by_runner",
+        "started_at_utc",
+        "last_runner_id",
+        "last_run_at_utc",
+        "total_runs",
+        "start_attempts",
+    }
 
     def __init__(self, state_path: str, owner_id: str) -> None:
         self.state_path = state_path
@@ -404,6 +416,17 @@ class UnstoppableLaunchSentinel:
             with open(self.state_path, "r", encoding="utf-8") as handle:
                 raw = json.load(handle)
         except (OSError, ValueError):
+            state = self._default_state(owner_id)
+            self._save(state)
+            return state
+
+        if not isinstance(raw, dict):
+            state = self._default_state(owner_id)
+            self._save(state)
+            return state
+
+        unknown_fields = sorted(set(raw.keys()) - self.STATE_FIELDS)
+        if unknown_fields:
             state = self._default_state(owner_id)
             self._save(state)
             return state
