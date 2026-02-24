@@ -39,6 +39,7 @@ Verification details:
 - Security runtime config is fail-closed validated (`max_skew_seconds`, `max_requests_per_minute`, `max_seen_entries`).
 - `source_text` control characters are rejected to reduce payload abuse/log injection risk.
 - Invalid/unknown sender penalties are bucketed to a fixed key to avoid slash-map pollution.
+- Malformed launch sentinel state values are fail-closed reset to defaults.
 - Request envelope schema is strict: unexpected fields and boolean timestamps are rejected.
 
 4. Public transparency:

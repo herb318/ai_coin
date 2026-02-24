@@ -365,18 +365,22 @@ class UnstoppableLaunchSentinel:
             self._save(state)
             return state
 
-        state = UnstoppableLaunchState(
-            owner_id=owner_id,
-            armed=bool(raw.get("armed", False)),
-            unstoppable_started=bool(raw.get("unstoppable_started", False)),
-            successful_open=bool(raw.get("successful_open", False)),
-            started_by_runner=str(raw.get("started_by_runner", "")),
-            started_at_utc=str(raw.get("started_at_utc", "")),
-            last_runner_id=str(raw.get("last_runner_id", "")),
-            last_run_at_utc=str(raw.get("last_run_at_utc", "")),
-            total_runs=max(0, int(raw.get("total_runs", 0))),
-            start_attempts=max(0, int(raw.get("start_attempts", 0))),
-        )
+        try:
+            state = UnstoppableLaunchState(
+                owner_id=owner_id,
+                armed=bool(raw.get("armed", False)),
+                unstoppable_started=bool(raw.get("unstoppable_started", False)),
+                successful_open=bool(raw.get("successful_open", False)),
+                started_by_runner=str(raw.get("started_by_runner", "")),
+                started_at_utc=str(raw.get("started_at_utc", "")),
+                last_runner_id=str(raw.get("last_runner_id", "")),
+                last_run_at_utc=str(raw.get("last_run_at_utc", "")),
+                total_runs=max(0, int(raw.get("total_runs", 0))),
+                start_attempts=max(0, int(raw.get("start_attempts", 0))),
+            )
+        except (TypeError, ValueError):
+            # Fail closed on malformed persisted values.
+            state = self._default_state(owner_id)
         self._save(state)
         return state
 

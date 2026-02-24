@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import unittest
@@ -442,6 +443,33 @@ class TestUnstoppableLaunchSentinel(unittest.TestCase):
             self.assertEqual(snapshot["owner_id"], "owner-new")
             self.assertFalse(snapshot["armed"])
             self.assertFalse(snapshot["unstoppable_started"])
+            self.assertEqual(snapshot["total_runs"], 0)
+            self.assertEqual(snapshot["start_attempts"], 0)
+
+    def test_malformed_state_values_reset_to_default(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            state_path = os.path.join(tmp_dir, "launch_state.json")
+            malformed = {
+                "owner_id": "owner-main",
+                "armed": True,
+                "unstoppable_started": True,
+                "successful_open": True,
+                "started_by_runner": "runner-x",
+                "started_at_utc": "2026-02-24T00:00:00+00:00",
+                "last_runner_id": "runner-x",
+                "last_run_at_utc": "2026-02-24T00:00:00+00:00",
+                "total_runs": "not-an-int",
+                "start_attempts": "not-an-int",
+            }
+            with open(state_path, "w", encoding="utf-8") as handle:
+                json.dump(malformed, handle)
+
+            sentinel = UnstoppableLaunchSentinel(state_path=state_path, owner_id="owner-main")
+            snapshot = sentinel.snapshot()
+            self.assertEqual(snapshot["owner_id"], "owner-main")
+            self.assertFalse(snapshot["armed"])
+            self.assertFalse(snapshot["unstoppable_started"])
+            self.assertFalse(snapshot["successful_open"])
             self.assertEqual(snapshot["total_runs"], 0)
             self.assertEqual(snapshot["start_attempts"], 0)
 
