@@ -91,21 +91,6 @@ python3 decentralized_ai_network_demo.py --show-launch-state --launch-state-path
 
 3. After arm, any non-owner one-time execution triggers unstoppable live start.
 
-## Owner Emergency Control (Transparent)
-
-Hidden/undisclosed bypass is not used.  
-Owner-only emergency control is explicit and auditable through launch state.
-
-Pause:
-```bash
-python3 decentralized_ai_network_demo.py --pause-network --pause-reason "maintenance-window" --launch-state-path runtime/launch_state.json
-```
-
-Resume:
-```bash
-python3 decentralized_ai_network_demo.py --resume-network --launch-state-path runtime/launch_state.json
-```
-
 ## Security and Open-Source Hygiene
 
 Run local scans before publishing:

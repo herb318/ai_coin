@@ -24,17 +24,6 @@ Behavior:
 State is persisted in:
 - `runtime/launch_state.json` (git-ignored)
 
-## Emergency Pause/Resume
-
-Owner-only commands:
-- `--pause-network --pause-reason "<reason>"`
-- `--resume-network`
-
-Rules:
-- Only `OWNER_ID` can pause/resume.
-- Pause blocks normal execution paths and returns paused state.
-- Pause/release metadata is persisted (`paused_by_runner`, `paused_at_utc`, `resumed_by_runner`, `resumed_at_utc`).
-
 ## Runner Identity Rules
 
 Runner identity resolution order:
