@@ -42,6 +42,7 @@ Verification details:
 - Malformed launch sentinel state values are fail-closed reset to defaults.
 - Launch sentinel persisted booleans/invariants are strictly validated (no truthy-string coercion).
 - Launch sentinel persisted schema is strict (non-object/unknown fields trigger fail-closed reset).
+- Production RPC URL validation rejects private/link-local/reserved IP endpoints.
 - Request envelope schema is strict: unexpected fields and boolean timestamps are rejected.
 
 4. Public transparency:

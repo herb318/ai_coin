@@ -148,6 +148,29 @@ class TestLaunchGate(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 net.open_mainnet()
 
+    def test_production_checks_fail_with_private_ip_rpc_url(self) -> None:
+        env = {
+            "OWNER_ID": "owner-prod-1",
+            "NETWORK_SHARED_SECRET": "A9x#4mB2qL7zT1vK8nR3pW6yH0dC5fJ!",
+            "PRIVATE_RPC_URL": "https://10.10.1.5:443",
+            "PRIVATE_API_TOKEN": "Priv_token_local_value_123",
+            "WALLET_NODE_SEA_1": "wallet_node_sea_1_unique",
+            "WALLET_NODE_TYO_2": "wallet_node_tyo_2_unique",
+            "WALLET_NODE_SGP_3": "wallet_node_sgp_3_unique",
+            "WALLET_NODE_FRA_4": "wallet_node_fra_4_unique",
+            "WALLET_NODE_IAD_5": "wallet_node_iad_5_unique",
+            "WALLET_FOUNDER_TREASURY": "wallet_founder_treasury_unique",
+            "WALLET_ECOSYSTEM_TREASURY": "wallet_ecosystem_treasury_unique",
+            "WALLET_SECURITY_TREASURY": "wallet_security_treasury_unique",
+            "WALLET_COMMUNITY_TREASURY": "wallet_community_treasury_unique",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            net = TranslationNetwork()
+            checks = net.run_preflight_checks(security_scan_passed=True, production_mode=True)
+            self.assertFalse(checks["account_registry_passed"])
+            with self.assertRaises(RuntimeError):
+                net.open_mainnet()
+
 
 class TestSecurity(unittest.TestCase):
     def test_replay_attack_is_blocked(self) -> None:
@@ -219,6 +242,25 @@ class TestSecurity(unittest.TestCase):
 
         env = net.security.build_envelope("bool-ts", "node-sea-1", "질문이 있으면 언제든지 말씀해 주세요.")
         env["timestamp"] = True
+        env["signature"] = net.security.sign(
+            {
+                "request_id": env["request_id"],
+                "node_id": env["node_id"],
+                "source_text": env["source_text"],
+                "nonce": env["nonce"],
+                "timestamp": env["timestamp"],
+            }
+        )
+        with self.assertRaisesRegex(ValueError, "invalid timestamp type"):
+            net.process_request(env)
+
+    def test_float_timestamp_is_blocked(self) -> None:
+        net = TranslationNetwork()
+        net.run_preflight_checks(security_scan_passed=True, production_mode=False)
+        net.open_mainnet()
+
+        env = net.security.build_envelope("float-ts", "node-sea-1", "질문이 있으면 언제든지 말씀해 주세요.")
+        env["timestamp"] = float(env["timestamp"])
         env["signature"] = net.security.sign(
             {
                 "request_id": env["request_id"],

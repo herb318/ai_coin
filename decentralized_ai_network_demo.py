@@ -250,7 +250,15 @@ class IdentityRegistry:
             address = ipaddress.ip_address(host)
         except ValueError:
             return True
-        return not (address.is_loopback or address.is_multicast or address.is_unspecified)
+        blocked_flags = (
+            address.is_loopback,
+            address.is_multicast,
+            address.is_unspecified,
+            address.is_private,
+            address.is_link_local,
+            address.is_reserved,
+        )
+        return not any(blocked_flags)
 
     def _valid_api_token(self, value: str) -> bool:
         token = value.strip()
@@ -832,10 +840,15 @@ class RequestSecurity:
         raw_timestamp = envelope["timestamp"]
         if isinstance(raw_timestamp, bool):
             return False, "invalid timestamp type"
-        try:
-            timestamp = int(raw_timestamp)
-        except (TypeError, ValueError):
-            return False, "invalid timestamp"
+        if isinstance(raw_timestamp, int):
+            timestamp = raw_timestamp
+        elif isinstance(raw_timestamp, str):
+            candidate = raw_timestamp.strip()
+            if not candidate.isdigit():
+                return False, "invalid timestamp"
+            timestamp = int(candidate)
+        else:
+            return False, "invalid timestamp type"
         if timestamp <= 0:
             return False, "invalid timestamp"
 
