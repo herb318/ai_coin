@@ -40,6 +40,7 @@ Verification details:
 - `source_text` control characters are rejected to reduce payload abuse/log injection risk.
 - Invalid/unknown sender penalties are bucketed to a fixed key to avoid slash-map pollution.
 - Malformed launch sentinel state values are fail-closed reset to defaults.
+- Launch sentinel persisted booleans/invariants are strictly validated (no truthy-string coercion).
 - Request envelope schema is strict: unexpected fields and boolean timestamps are rejected.
 
 4. Public transparency:

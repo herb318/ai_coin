@@ -473,6 +473,60 @@ class TestUnstoppableLaunchSentinel(unittest.TestCase):
             self.assertEqual(snapshot["total_runs"], 0)
             self.assertEqual(snapshot["start_attempts"], 0)
 
+    def test_string_boolean_state_values_reset_to_default(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            state_path = os.path.join(tmp_dir, "launch_state.json")
+            malformed = {
+                "owner_id": "owner-main",
+                "armed": "true",
+                "unstoppable_started": "false",
+                "successful_open": "false",
+                "started_by_runner": "",
+                "started_at_utc": "",
+                "last_runner_id": "runner-x",
+                "last_run_at_utc": "2026-02-24T00:00:00+00:00",
+                "total_runs": 1,
+                "start_attempts": 0,
+            }
+            with open(state_path, "w", encoding="utf-8") as handle:
+                json.dump(malformed, handle)
+
+            sentinel = UnstoppableLaunchSentinel(state_path=state_path, owner_id="owner-main")
+            snapshot = sentinel.snapshot()
+            self.assertFalse(snapshot["armed"])
+            self.assertFalse(snapshot["unstoppable_started"])
+            self.assertFalse(snapshot["successful_open"])
+            self.assertEqual(snapshot["total_runs"], 0)
+            self.assertEqual(snapshot["start_attempts"], 0)
+
+    def test_inconsistent_started_state_resets_to_default(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            state_path = os.path.join(tmp_dir, "launch_state.json")
+            malformed = {
+                "owner_id": "owner-main",
+                "armed": False,
+                "unstoppable_started": True,
+                "successful_open": False,
+                "started_by_runner": "runner-y",
+                "started_at_utc": "2026-02-24T00:00:00+00:00",
+                "last_runner_id": "runner-y",
+                "last_run_at_utc": "2026-02-24T00:00:00+00:00",
+                "total_runs": 3,
+                "start_attempts": 1,
+            }
+            with open(state_path, "w", encoding="utf-8") as handle:
+                json.dump(malformed, handle)
+
+            sentinel = UnstoppableLaunchSentinel(state_path=state_path, owner_id="owner-main")
+            snapshot = sentinel.snapshot()
+            self.assertFalse(snapshot["armed"])
+            self.assertFalse(snapshot["unstoppable_started"])
+            self.assertFalse(snapshot["successful_open"])
+            self.assertEqual(snapshot["started_by_runner"], "")
+            self.assertEqual(snapshot["started_at_utc"], "")
+            self.assertEqual(snapshot["total_runs"], 0)
+            self.assertEqual(snapshot["start_attempts"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -337,12 +337,62 @@ class UnstoppableLaunchState:
 
 
 class UnstoppableLaunchSentinel:
+    MAX_ID_FIELD_LEN = 128
+    MAX_TIME_FIELD_LEN = 64
+
     def __init__(self, state_path: str, owner_id: str) -> None:
         self.state_path = state_path
         self.state = self._load_or_default(owner_id)
 
     def _default_state(self, owner_id: str) -> UnstoppableLaunchState:
         return UnstoppableLaunchState(owner_id=owner_id)
+
+    @staticmethod
+    def _read_bool(raw: Dict[str, Any], key: str) -> bool:
+        value = raw.get(key, False)
+        if not isinstance(value, bool):
+            raise ValueError(f"invalid {key} type")
+        return value
+
+    @staticmethod
+    def _read_non_negative_int(raw: Dict[str, Any], key: str) -> int:
+        value = raw.get(key, 0)
+        if isinstance(value, bool):
+            raise ValueError(f"invalid {key} type")
+        parsed = int(value)
+        if parsed < 0:
+            raise ValueError(f"invalid {key} value")
+        return parsed
+
+    @staticmethod
+    def _read_string(raw: Dict[str, Any], key: str, max_len: int) -> str:
+        value = raw.get(key, "")
+        if value is None:
+            return ""
+        if not isinstance(value, str):
+            raise ValueError(f"invalid {key} type")
+        cleaned = value.strip()
+        if len(cleaned) > max_len:
+            raise ValueError(f"invalid {key} length")
+        return cleaned
+
+    @classmethod
+    def _read_iso8601(cls, raw: Dict[str, Any], key: str) -> str:
+        value = cls._read_string(raw, key, cls.MAX_TIME_FIELD_LEN)
+        if value:
+            datetime.fromisoformat(value)
+        return value
+
+    @staticmethod
+    def _validate_state_invariants(state: UnstoppableLaunchState) -> None:
+        if state.successful_open and not state.unstoppable_started:
+            raise ValueError("invalid successful_open state")
+        if state.unstoppable_started and not state.armed:
+            raise ValueError("invalid unstoppable_started state")
+        if state.unstoppable_started and (not state.started_by_runner or not state.started_at_utc):
+            raise ValueError("invalid unstoppable metadata")
+        if not state.unstoppable_started and (state.started_by_runner or state.started_at_utc):
+            raise ValueError("invalid pre-start metadata")
 
     def _load_or_default(self, owner_id: str) -> UnstoppableLaunchState:
         if not os.path.exists(self.state_path):
@@ -368,16 +418,17 @@ class UnstoppableLaunchSentinel:
         try:
             state = UnstoppableLaunchState(
                 owner_id=owner_id,
-                armed=bool(raw.get("armed", False)),
-                unstoppable_started=bool(raw.get("unstoppable_started", False)),
-                successful_open=bool(raw.get("successful_open", False)),
-                started_by_runner=str(raw.get("started_by_runner", "")),
-                started_at_utc=str(raw.get("started_at_utc", "")),
-                last_runner_id=str(raw.get("last_runner_id", "")),
-                last_run_at_utc=str(raw.get("last_run_at_utc", "")),
-                total_runs=max(0, int(raw.get("total_runs", 0))),
-                start_attempts=max(0, int(raw.get("start_attempts", 0))),
+                armed=self._read_bool(raw, "armed"),
+                unstoppable_started=self._read_bool(raw, "unstoppable_started"),
+                successful_open=self._read_bool(raw, "successful_open"),
+                started_by_runner=self._read_string(raw, "started_by_runner", self.MAX_ID_FIELD_LEN),
+                started_at_utc=self._read_iso8601(raw, "started_at_utc"),
+                last_runner_id=self._read_string(raw, "last_runner_id", self.MAX_ID_FIELD_LEN),
+                last_run_at_utc=self._read_iso8601(raw, "last_run_at_utc"),
+                total_runs=self._read_non_negative_int(raw, "total_runs"),
+                start_attempts=self._read_non_negative_int(raw, "start_attempts"),
             )
+            self._validate_state_invariants(state)
         except (TypeError, ValueError):
             # Fail closed on malformed persisted values.
             state = self._default_state(owner_id)
