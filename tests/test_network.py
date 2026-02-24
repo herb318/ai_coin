@@ -201,6 +201,35 @@ class TestSecurity(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "invalid nonce"):
             net.process_request(env)
 
+    def test_unexpected_envelope_field_is_blocked(self) -> None:
+        net = TranslationNetwork()
+        net.run_preflight_checks(security_scan_passed=True, production_mode=False)
+        net.open_mainnet()
+
+        env = net.security.build_envelope("unexpected-field", "node-sea-1", "안녕하세요, 회의에 참석해 주셔서 감사합니다.")
+        env["debug"] = "not-allowed"
+        with self.assertRaisesRegex(ValueError, "unexpected field"):
+            net.process_request(env)
+
+    def test_boolean_timestamp_is_blocked(self) -> None:
+        net = TranslationNetwork()
+        net.run_preflight_checks(security_scan_passed=True, production_mode=False)
+        net.open_mainnet()
+
+        env = net.security.build_envelope("bool-ts", "node-sea-1", "질문이 있으면 언제든지 말씀해 주세요.")
+        env["timestamp"] = True
+        env["signature"] = net.security.sign(
+            {
+                "request_id": env["request_id"],
+                "node_id": env["node_id"],
+                "source_text": env["source_text"],
+                "nonce": env["nonce"],
+                "timestamp": env["timestamp"],
+            }
+        )
+        with self.assertRaisesRegex(ValueError, "invalid timestamp type"):
+            net.process_request(env)
+
     def test_oversized_payload_is_blocked(self) -> None:
         net = TranslationNetwork()
         net.run_preflight_checks(security_scan_passed=True, production_mode=False)

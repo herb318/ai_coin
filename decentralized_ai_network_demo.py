@@ -630,6 +630,7 @@ class UpgradeProposal:
 
 
 class RequestSecurity:
+    REQUIRED_FIELDS = ("request_id", "node_id", "source_text", "nonce", "timestamp", "signature")
     REQUEST_ID_MAX_CHARS = 128
     REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
     SOURCE_TEXT_MAX_CHARS = 4096
@@ -695,11 +696,17 @@ class RequestSecurity:
         return payload
 
     def verify(self, envelope: Dict[str, Any], current_ts: Optional[int] = None) -> tuple[bool, str]:
+        if not isinstance(envelope, dict):
+            return False, "invalid envelope type"
+
         now = now_ts() if current_ts is None else current_ts
-        required = ["request_id", "node_id", "source_text", "nonce", "timestamp", "signature"]
+        required = list(self.REQUIRED_FIELDS)
         for key in required:
             if key not in envelope:
                 return False, f"missing field: {key}"
+        extras = sorted(set(envelope.keys()) - set(required))
+        if extras:
+            return False, f"unexpected field: {extras[0]}"
 
         request_id = envelope["request_id"]
         if not isinstance(request_id, str):
@@ -744,8 +751,11 @@ class RequestSecurity:
         if not self._is_hex_string(provided, expected_len=self.SIGNATURE_HEX_LEN):
             return False, "invalid signature format"
 
+        raw_timestamp = envelope["timestamp"]
+        if isinstance(raw_timestamp, bool):
+            return False, "invalid timestamp type"
         try:
-            timestamp = int(envelope["timestamp"])
+            timestamp = int(raw_timestamp)
         except (TypeError, ValueError):
             return False, "invalid timestamp"
         if timestamp <= 0:
@@ -1216,6 +1226,43 @@ class SecurityQAAgent(QAAgent):
             control_chars_blocked = "invalid source_text control chars" in str(exc)
             control_chars_reason = str(exc)
 
+        unexpected_field = net.security.build_envelope(
+            "qa-security-unexpected-field",
+            "node-sea-1",
+            "안녕하세요, 회의에 참석해 주셔서 감사합니다.",
+        )
+        unexpected_field["debug"] = "extra"
+        unexpected_field_blocked = False
+        unexpected_field_reason = ""
+        try:
+            net.process_request(unexpected_field)
+        except ValueError as exc:
+            unexpected_field_blocked = "unexpected field" in str(exc)
+            unexpected_field_reason = str(exc)
+
+        bool_timestamp = net.security.build_envelope(
+            "qa-security-bool-timestamp",
+            "node-sea-1",
+            "질문이 있으면 언제든지 말씀해 주세요.",
+        )
+        bool_timestamp["timestamp"] = True
+        bool_timestamp["signature"] = net.security.sign(
+            {
+                "request_id": bool_timestamp["request_id"],
+                "node_id": bool_timestamp["node_id"],
+                "source_text": bool_timestamp["source_text"],
+                "nonce": bool_timestamp["nonce"],
+                "timestamp": bool_timestamp["timestamp"],
+            }
+        )
+        bool_timestamp_blocked = False
+        bool_timestamp_reason = ""
+        try:
+            net.process_request(bool_timestamp)
+        except ValueError as exc:
+            bool_timestamp_blocked = "invalid timestamp type" in str(exc)
+            bool_timestamp_reason = str(exc)
+
         first = net.security.build_envelope("qa-security-dup-req", "node-sea-1", "안녕하세요, 회의에 참석해 주셔서 감사합니다.")
         net.process_request(first)
         duplicate = net.security.build_envelope("qa-security-dup-req", "node-sea-1", "안녕하세요, 회의에 참석해 주셔서 감사합니다.")
@@ -1358,6 +1405,8 @@ class SecurityQAAgent(QAAgent):
             and nonce_blocked
             and oversized_blocked
             and control_chars_blocked
+            and unexpected_field_blocked
+            and bool_timestamp_blocked
             and duplicate_request_blocked
             and cross_node_duplicate_blocked
             and invalid_request_id_blocked
@@ -1384,6 +1433,10 @@ class SecurityQAAgent(QAAgent):
                 "oversized_reason": oversized_reason,
                 "control_chars_blocked": control_chars_blocked,
                 "control_chars_reason": control_chars_reason,
+                "unexpected_field_blocked": unexpected_field_blocked,
+                "unexpected_field_reason": unexpected_field_reason,
+                "bool_timestamp_blocked": bool_timestamp_blocked,
+                "bool_timestamp_reason": bool_timestamp_reason,
                 "duplicate_request_blocked": duplicate_request_blocked,
                 "duplicate_request_reason": duplicate_request_reason,
                 "cross_node_duplicate_blocked": cross_node_duplicate_blocked,
