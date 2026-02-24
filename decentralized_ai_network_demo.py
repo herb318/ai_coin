@@ -767,8 +767,12 @@ class RequestSecurity:
         msg = canonical_json(payload).encode("utf-8")
         return hmac.new(self.shared_secret, msg, hashlib.sha256).hexdigest()
 
+    @staticmethod
+    def canonical_request_id(request_id: str) -> str:
+        return request_id.strip().lower()
+
     def build_envelope(self, request_id: str, node_id: str, source_text: str) -> Dict[str, Any]:
-        request_id = request_id.strip()
+        request_id = self.canonical_request_id(request_id)
         node_id = node_id.strip()
         source_text = source_text.strip()
         payload = {
@@ -797,7 +801,7 @@ class RequestSecurity:
         request_id = envelope["request_id"]
         if not isinstance(request_id, str):
             return False, "invalid request_id type"
-        request_id = request_id.strip()
+        request_id = self.canonical_request_id(request_id)
         if not request_id or len(request_id) > self.REQUEST_ID_MAX_CHARS:
             return False, "invalid request_id"
         if not self.REQUEST_ID_PATTERN.fullmatch(request_id):
@@ -1088,7 +1092,7 @@ class TranslationNetwork:
             self._record_slash(envelope.get("node_id"))
             raise ValueError(f"request rejected: {reason}")
 
-        request_id = str(envelope["request_id"]).strip()
+        request_id = self.security.canonical_request_id(str(envelope["request_id"]))
         if request_id in self.ledger_request_ids:
             self._record_slash(envelope.get("node_id"))
             raise ValueError("request rejected: duplicate request_id")
@@ -1384,6 +1388,25 @@ class SecurityQAAgent(QAAgent):
             cross_node_duplicate_blocked = "duplicate request_id" in str(exc)
             cross_node_duplicate_reason = str(exc)
 
+        case_variant_first = net.security.build_envelope(
+            "qa-security-case-dup",
+            "node-sea-1",
+            "안녕하세요, 회의에 참석해 주셔서 감사합니다.",
+        )
+        net.process_request(case_variant_first)
+        case_variant_duplicate = net.security.build_envelope(
+            "QA-SECURITY-CASE-DUP",
+            "node-tyo-2",
+            "질문이 있으면 언제든지 말씀해 주세요.",
+        )
+        case_variant_duplicate_blocked = False
+        case_variant_duplicate_reason = ""
+        try:
+            net.process_request(case_variant_duplicate)
+        except ValueError as exc:
+            case_variant_duplicate_blocked = "duplicate request_id" in str(exc)
+            case_variant_duplicate_reason = str(exc)
+
         invalid_request_id = net.security.build_envelope(
             "qa security bad id",
             "node-sea-1",
@@ -1500,6 +1523,7 @@ class SecurityQAAgent(QAAgent):
             and bool_timestamp_blocked
             and duplicate_request_blocked
             and cross_node_duplicate_blocked
+            and case_variant_duplicate_blocked
             and invalid_request_id_blocked
             and persistent_duplicate_blocked
             and persistent_whitespace_duplicate_blocked
@@ -1532,6 +1556,8 @@ class SecurityQAAgent(QAAgent):
                 "duplicate_request_reason": duplicate_request_reason,
                 "cross_node_duplicate_blocked": cross_node_duplicate_blocked,
                 "cross_node_duplicate_reason": cross_node_duplicate_reason,
+                "case_variant_duplicate_blocked": case_variant_duplicate_blocked,
+                "case_variant_duplicate_reason": case_variant_duplicate_reason,
                 "invalid_request_id_blocked": invalid_request_id_blocked,
                 "invalid_request_id_reason": invalid_request_id_reason,
                 "persistent_duplicate_blocked": persistent_duplicate_blocked,

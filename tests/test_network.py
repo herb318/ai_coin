@@ -322,6 +322,38 @@ class TestSecurity(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate request_id"):
             net.process_request(second)
 
+    def test_duplicate_request_id_with_case_variant_is_blocked(self) -> None:
+        net = TranslationNetwork()
+        net.run_preflight_checks(security_scan_passed=True, production_mode=False)
+        net.open_mainnet()
+
+        first = net.security.build_envelope(
+            "dup-request-id-case",
+            "node-sea-1",
+            "안녕하세요, 회의에 참석해 주셔서 감사합니다.",
+        )
+        second = net.security.build_envelope(
+            "DUP-REQUEST-ID-CASE",
+            "node-tyo-2",
+            "질문이 있으면 언제든지 말씀해 주세요.",
+        )
+        net.process_request(first)
+        with self.assertRaisesRegex(ValueError, "duplicate request_id"):
+            net.process_request(second)
+
+    def test_request_id_is_normalized_to_lowercase(self) -> None:
+        net = TranslationNetwork()
+        net.run_preflight_checks(security_scan_passed=True, production_mode=False)
+        net.open_mainnet()
+
+        env = net.security.build_envelope(
+            "Req-Id-Mixed-Case",
+            "node-sea-1",
+            "안녕하세요, 회의에 참석해 주셔서 감사합니다.",
+        )
+        out = net.process_request(env)
+        self.assertEqual(out["request_id"], "req-id-mixed-case")
+
     def test_invalid_request_id_format_is_blocked(self) -> None:
         net = TranslationNetwork()
         net.run_preflight_checks(security_scan_passed=True, production_mode=False)

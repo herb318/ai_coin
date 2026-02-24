@@ -43,6 +43,7 @@ Verification details:
 - Launch sentinel persisted booleans/invariants are strictly validated (no truthy-string coercion).
 - Launch sentinel persisted schema is strict (non-object/unknown fields trigger fail-closed reset).
 - Production RPC URL validation rejects private/link-local/reserved IP endpoints.
+- `request_id` is canonicalized to lowercase to prevent case-variant duplicate bypass.
 - Request envelope schema is strict: unexpected fields and boolean timestamps are rejected.
 
 4. Public transparency:
