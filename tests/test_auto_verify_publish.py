@@ -8,26 +8,82 @@ from scripts.auto_verify_publish import (
     load_status_payload,
     parse_generated_at_utc,
     should_block_publish,
+    validate_status_payload_consistency,
     validate_status_payload_schema,
 )
+from scripts.network_status_agent import _status_fingerprint
 
 
 def _base_status_payload() -> dict:
-    return {
+    payload = {
         "generated_at_utc": datetime(2026, 2, 24, 15, 0, 0, tzinfo=timezone.utc).isoformat(),
         "mode": "network-status-agent",
+        "protocol_name": "Distributed Proof-of-Useful-Inference Network",
         "protocol_id": "dpuin-protocol",
         "status_ok": True,
         "health_level": "OK",
         "status_reasons": [],
+        "launch_error": "",
+        "qa_error": "",
+        "advisories": [],
+        "recommended_actions": [],
+        "production_checks": False,
         "network_size_nodes": 5,
         "avg_winner_latency_ms": 45.6,
         "requests_executed": 5,
+        "preflight_checks": {
+            "security_scan_passed": True,
+            "economic_invariant_passed": True,
+            "consensus_quorum_passed": True,
+            "key_management_passed": True,
+            "stress_test_passed": True,
+            "account_registry_passed": True,
+        },
+        "production_readiness": {
+            "ready": False,
+            "checks": {
+                "security_scan_passed": True,
+                "economic_invariant_passed": True,
+                "consensus_quorum_passed": True,
+                "key_management_passed": False,
+                "stress_test_passed": True,
+                "account_registry_passed": False,
+            },
+        },
         "qa_overall_passed": True,
         "qa_agent_count": 5,
-        "status_fingerprint": "a" * 64,
+        "launch_state": {
+            "owner_id": "owner-dev-local",
+            "armed": False,
+            "unstoppable_started": False,
+            "successful_open": False,
+            "started_by_runner": "",
+            "started_at_utc": "",
+            "last_runner_id": "",
+            "last_run_at_utc": "",
+            "total_runs": 0,
+            "start_attempts": 0,
+        },
+        "snapshot": {
+            "epoch": 5,
+            "model_version": "llm-shard-v1.0",
+            "minted_supply": "4807425.3741",
+            "max_supply": "10000000.0000",
+            "balances": {},
+            "launch_gate": {},
+            "mainnet_open": True,
+            "slash_points": {},
+            "ledger_entries": 5,
+            "owner_id": "owner-dev-local",
+            "wallets_redacted": {},
+            "account_registry_ready": False,
+            "connection_configured": False,
+        },
+        "top_node_balances": [],
         "history_chain": {"tracked_entries": 1, "valid": True},
     }
+    payload["status_fingerprint"] = _status_fingerprint(payload)
+    return payload
 
 
 class TestAutoVerifyPublish(unittest.TestCase):
@@ -42,6 +98,18 @@ class TestAutoVerifyPublish(unittest.TestCase):
         ok, reason = validate_status_payload_schema(payload)
         self.assertFalse(ok)
         self.assertIn("health_level", reason)
+
+    def test_validate_status_payload_consistency_ok(self) -> None:
+        ok, reason = validate_status_payload_consistency(_base_status_payload())
+        self.assertTrue(ok)
+        self.assertEqual(reason, "")
+
+    def test_validate_status_payload_consistency_fingerprint_mismatch(self) -> None:
+        payload = _base_status_payload()
+        payload["status_fingerprint"] = "f" * 64
+        ok, reason = validate_status_payload_consistency(payload)
+        self.assertFalse(ok)
+        self.assertIn("status_fingerprint mismatch", reason)
 
     def test_parse_generated_at_utc_accepts_zulu(self) -> None:
         parsed = parse_generated_at_utc("2026-02-24T15:00:00Z")
@@ -156,6 +224,7 @@ class TestAutoVerifyPublish(unittest.TestCase):
                 "recommended_actions": ["Set NETWORK_SHARED_SECRET and retry."],
             }
         )
+        payload["status_fingerprint"] = _status_fingerprint(payload)
         blocked, reason = should_block_publish(
             status_payload=payload,
             production_checks=True,
@@ -192,6 +261,7 @@ class TestAutoVerifyPublish(unittest.TestCase):
     def test_should_not_block_warn_by_default(self) -> None:
         payload = _base_status_payload()
         payload.update({"health_level": "WARN", "advisories": ["production_readiness_false"]})
+        payload["status_fingerprint"] = _status_fingerprint(payload)
         blocked, reason = should_block_publish(
             status_payload=payload,
             production_checks=True,
@@ -211,6 +281,7 @@ class TestAutoVerifyPublish(unittest.TestCase):
                 "recommended_actions": ["Run status agent with --production-checks."],
             }
         )
+        payload["status_fingerprint"] = _status_fingerprint(payload)
         blocked, reason = should_block_publish(
             status_payload=payload,
             production_checks=True,

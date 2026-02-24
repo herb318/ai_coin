@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+from scripts.network_status_agent import _status_fingerprint
+
 EXPECTED_MODE = "network-status-agent"
 EXPECTED_PROTOCOL_ID = "dpuin-protocol"
 ALLOWED_HEALTH_LEVELS = {"OK", "WARN", "DEGRADED"}
@@ -93,6 +95,16 @@ def validate_status_payload_schema(status_payload: Dict[str, Any]) -> Tuple[bool
     if health_level not in ALLOWED_HEALTH_LEVELS:
         return False, f"Invalid health_level: {health_level!r}"
 
+    status_reasons = status_payload.get("status_reasons")
+    advisories = status_payload.get("advisories")
+    recommended_actions = status_payload.get("recommended_actions")
+    if not isinstance(status_reasons, list):
+        return False, "Invalid status_reasons type: expected list"
+    if not isinstance(advisories, list):
+        return False, "Invalid advisories type: expected list"
+    if not isinstance(recommended_actions, list):
+        return False, "Invalid recommended_actions type: expected list"
+
     if not _is_non_negative_int(status_payload.get("network_size_nodes")):
         return False, "Invalid network_size_nodes: expected non-negative int"
     if int(status_payload.get("network_size_nodes", 0)) < 3:
@@ -129,6 +141,29 @@ def validate_status_payload_schema(status_payload: Dict[str, Any]) -> Tuple[bool
     return True, ""
 
 
+def validate_status_payload_consistency(status_payload: Dict[str, Any]) -> Tuple[bool, str]:
+    health_level = str(status_payload.get("health_level", "")).upper().strip()
+    status_ok = bool(status_payload.get("status_ok"))
+    status_reasons = status_payload.get("status_reasons", [])
+    advisories = status_payload.get("advisories", [])
+
+    if health_level == "OK" and status_reasons:
+        return False, "Health is OK but status_reasons is non-empty"
+    if health_level == "DEGRADED" and not status_reasons:
+        return False, "Health is DEGRADED but status_reasons is empty"
+    if status_ok and health_level == "DEGRADED":
+        return False, "status_ok is true while health_level is DEGRADED"
+    if (not status_ok) and health_level == "OK" and not advisories:
+        return False, "status_ok is false while health_level is OK with no advisories"
+
+    actual_fingerprint = str(status_payload.get("status_fingerprint", ""))
+    expected_fingerprint = _status_fingerprint(status_payload)
+    if actual_fingerprint != expected_fingerprint:
+        return False, "status_fingerprint mismatch against recomputed semantic fingerprint"
+
+    return True, ""
+
+
 def should_block_publish(
     status_payload: Dict[str, Any],
     production_checks: bool,
@@ -145,6 +180,14 @@ def should_block_publish(
             True,
             "Generated status payload schema validation failed under --production-checks. "
             f"{schema_reason}. "
+            "Regenerate status report before publish.",
+        )
+    consistency_ok, consistency_reason = validate_status_payload_consistency(status_payload)
+    if not consistency_ok:
+        return (
+            True,
+            "Generated status payload consistency validation failed under --production-checks. "
+            f"{consistency_reason}. "
             "Regenerate status report before publish.",
         )
     now = now_utc or datetime.now(timezone.utc)
