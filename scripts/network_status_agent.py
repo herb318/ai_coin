@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -101,10 +102,39 @@ def _recommended_actions(
     return actions
 
 
+def _status_fingerprint(payload: Dict[str, Any]) -> str:
+    basis = {
+        "mode": payload.get("mode"),
+        "protocol_name": payload.get("protocol_name"),
+        "protocol_id": payload.get("protocol_id"),
+        "status_ok": payload.get("status_ok"),
+        "health_level": payload.get("health_level"),
+        "status_reasons": payload.get("status_reasons"),
+        "launch_error": payload.get("launch_error"),
+        "qa_error": payload.get("qa_error"),
+        "advisories": payload.get("advisories"),
+        "recommended_actions": payload.get("recommended_actions"),
+        "production_checks": payload.get("production_checks"),
+        "network_size_nodes": payload.get("network_size_nodes"),
+        "avg_winner_latency_ms": payload.get("avg_winner_latency_ms"),
+        "requests_executed": payload.get("requests_executed"),
+        "preflight_checks": payload.get("preflight_checks"),
+        "production_readiness": payload.get("production_readiness"),
+        "qa_overall_passed": payload.get("qa_overall_passed"),
+        "qa_agent_count": payload.get("qa_agent_count"),
+        "launch_state": payload.get("launch_state"),
+        "snapshot": payload.get("snapshot"),
+        "top_node_balances": payload.get("top_node_balances"),
+    }
+    encoded = json.dumps(to_jsonable(basis), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
 def _history_entry(payload: Dict[str, Any]) -> Dict[str, Any]:
     snapshot = payload.get("snapshot", {})
     return {
         "generated_at_utc": payload.get("generated_at_utc"),
+        "status_fingerprint": payload.get("status_fingerprint") or _status_fingerprint(payload),
         "health_level": payload.get("health_level"),
         "status_ok": bool(payload.get("status_ok")),
         "production_checks": bool(payload.get("production_checks")),
@@ -200,21 +230,33 @@ def append_history(
     max_entries: int = 500,
     recent_limit: int = 5,
     trend_window: int = 20,
+    skip_if_unchanged: bool = True,
 ) -> Dict[str, Any]:
     entries = _read_history(history_path)
-    entries.append(_history_entry(payload))
+    new_entry = _history_entry(payload)
+    history_appended = True
+    if skip_if_unchanged and entries:
+        last_fingerprint = str(entries[-1].get("status_fingerprint", ""))
+        new_fingerprint = str(new_entry.get("status_fingerprint", ""))
+        if last_fingerprint and new_fingerprint and last_fingerprint == new_fingerprint:
+            history_appended = False
+
+    if history_appended:
+        entries.append(new_entry)
     if max_entries > 0 and len(entries) > max_entries:
         entries = entries[-max_entries:]
 
-    history_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(history_path, "w", encoding="utf-8") as handle:
-        for item in entries:
-            handle.write(json.dumps(item, ensure_ascii=False) + "\n")
+    if history_appended or not history_path.exists():
+        history_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(history_path, "w", encoding="utf-8") as handle:
+            for item in entries:
+                handle.write(json.dumps(item, ensure_ascii=False) + "\n")
 
     return {
         "history_total_entries": len(entries),
         "recent_history": entries[-recent_limit:] if recent_limit > 0 else [],
         "history_trend": _history_trend(entries, recent_window=trend_window),
+        "history_appended": history_appended,
     }
 
 
@@ -309,6 +351,8 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     recent_history = payload.get("recent_history", [])
     history_trend = payload.get("history_trend", {})
     history_total_entries = payload.get("history_total_entries", 0)
+    status_fingerprint = payload.get("status_fingerprint", "")
+    history_appended = payload.get("history_appended", True)
     history_path = payload.get("history_path", "docs/NETWORK_HISTORY.jsonl")
     launch_error = payload.get("launch_error", "")
     qa_error = payload.get("qa_error", "")
@@ -375,6 +419,8 @@ Generated at: `{payload['generated_at_utc']}`
 
 - History file: `{history_path}`
 - Total history entries: `{history_total_entries}`
+- History appended this run: `{history_appended}`
+- Status fingerprint: `{status_fingerprint}`
 
 {recent_history_lines}
 
@@ -440,7 +486,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--history-path", default="docs/NETWORK_HISTORY.jsonl")
     parser.add_argument("--history-max-entries", type=int, default=500)
     parser.add_argument("--history-trend-window", type=int, default=20)
+    parser.add_argument("--no-history-dedupe", action="store_true")
+    parser.add_argument("--stable-output", dest="stable_output", action="store_true", default=True)
+    parser.add_argument("--no-stable-output", dest="stable_output", action="store_false")
     return parser.parse_args()
+
+
+def _load_existing_payload(path: Path) -> Dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
 
 
 def main() -> None:
@@ -455,19 +515,29 @@ def main() -> None:
     out_md = Path(args.output_md)
     out_json = Path(args.output_json)
     history_path = Path(args.history_path)
+    existing_payload = _load_existing_payload(out_json)
     out_md.parent.mkdir(parents=True, exist_ok=True)
     out_json.parent.mkdir(parents=True, exist_ok=True)
+
+    payload["status_fingerprint"] = _status_fingerprint(payload)
+    if args.stable_output and existing_payload:
+        if existing_payload.get("status_fingerprint") == payload["status_fingerprint"]:
+            existing_generated_at = existing_payload.get("generated_at_utc")
+            if isinstance(existing_generated_at, str) and existing_generated_at:
+                payload["generated_at_utc"] = existing_generated_at
 
     history_meta = append_history(
         history_path=history_path,
         payload=payload,
         max_entries=max(0, args.history_max_entries),
         trend_window=max(1, args.history_trend_window),
+        skip_if_unchanged=not args.no_history_dedupe,
     )
     payload["history_path"] = str(history_path)
     payload["history_total_entries"] = history_meta["history_total_entries"]
     payload["recent_history"] = history_meta["recent_history"]
     payload["history_trend"] = history_meta["history_trend"]
+    payload["history_appended"] = history_meta["history_appended"]
 
     markdown = render_markdown(payload)
     out_md.write_text(markdown, encoding="utf-8")

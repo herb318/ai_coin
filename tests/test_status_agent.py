@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from scripts.network_status_agent import build_status_payload
+from scripts.network_status_agent import _status_fingerprint, build_status_payload
 
 
 def _production_env() -> dict[str, str]:
@@ -80,6 +80,16 @@ class TestStatusAgent(unittest.TestCase):
         self.assertTrue(payload["qa_overall_passed"])
         self.assertEqual(payload["qa_error"], "")
         self.assertEqual(payload["requests_executed"], 5)
+
+    def test_status_fingerprint_ignores_generated_timestamp(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            state_path = os.path.join(tmp_dir, "launch_state.json")
+            with patch.dict(os.environ, {}, clear=True):
+                payload = build_status_payload(production_checks=False, launch_state_path=state_path)
+
+        other = dict(payload)
+        other["generated_at_utc"] = "2099-01-01T00:00:00+00:00"
+        self.assertEqual(_status_fingerprint(payload), _status_fingerprint(other))
 
 
 if __name__ == "__main__":

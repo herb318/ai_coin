@@ -154,6 +154,12 @@ Health fields in JSON:
 - `production_readiness.checks`: strict production check breakdown
 - `recent_history`: latest history entries
 - `history_trend`: trend summary from recent history window
+- `status_fingerprint`: semantic status digest (timestamp-independent)
+- `history_appended`: whether a new history record was appended this run
+
+Advanced status-agent options:
+- `--no-history-dedupe`: append history even when fingerprint is unchanged
+- `--no-stable-output`: always refresh `generated_at_utc` even if semantic status is unchanged
 - `launch_error` / `qa_error`: failure details when degraded
 
 ## Full Auto Verification + Publish

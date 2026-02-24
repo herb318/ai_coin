@@ -31,6 +31,7 @@ class TestStatusHistory(unittest.TestCase):
 
             self.assertTrue(history_path.exists())
             self.assertEqual(meta["history_total_entries"], 1)
+            self.assertTrue(meta["history_appended"])
             self.assertEqual(len(meta["recent_history"]), 1)
             self.assertEqual(meta["recent_history"][0]["epoch"], 1)
             self.assertEqual(meta["recent_history"][0]["recommended_actions"], [])
@@ -42,6 +43,7 @@ class TestStatusHistory(unittest.TestCase):
                 meta = append_history(history_path=history_path, payload=_payload(idx), max_entries=3, recent_limit=5)
 
             self.assertEqual(meta["history_total_entries"], 3)
+            self.assertTrue(meta["history_appended"])
             self.assertEqual([item["epoch"] for item in meta["recent_history"]], [5, 6, 7])
 
             lines = history_path.read_text(encoding="utf-8").strip().splitlines()
@@ -54,9 +56,43 @@ class TestStatusHistory(unittest.TestCase):
             meta = append_history(history_path=history_path, payload=_payload(3), max_entries=10, recent_limit=5)
 
             self.assertEqual(meta["history_total_entries"], 3)
+            self.assertTrue(meta["history_appended"])
             self.assertEqual(meta["recent_history"][-1]["epoch"], 3)
             parsed = [json.loads(line) for line in history_path.read_text(encoding="utf-8").splitlines() if line.strip()]
             self.assertEqual(len(parsed), 3)
+
+    def test_append_history_skips_duplicate_fingerprint(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            history_path = Path(tmp_dir) / "NETWORK_HISTORY.jsonl"
+            first = _payload(1)
+            second = dict(first)
+            second["generated_at_utc"] = "2026-02-24T14:00:59+00:00"
+
+            meta_first = append_history(history_path=history_path, payload=first, max_entries=10, recent_limit=5)
+            meta_second = append_history(history_path=history_path, payload=second, max_entries=10, recent_limit=5)
+
+            self.assertTrue(meta_first["history_appended"])
+            self.assertFalse(meta_second["history_appended"])
+            self.assertEqual(meta_second["history_total_entries"], 1)
+
+    def test_append_history_can_force_duplicate_append(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            history_path = Path(tmp_dir) / "NETWORK_HISTORY.jsonl"
+            first = _payload(1)
+            second = dict(first)
+            second["generated_at_utc"] = "2026-02-24T14:00:59+00:00"
+
+            append_history(history_path=history_path, payload=first, max_entries=10, recent_limit=5)
+            meta = append_history(
+                history_path=history_path,
+                payload=second,
+                max_entries=10,
+                recent_limit=5,
+                skip_if_unchanged=False,
+            )
+
+            self.assertTrue(meta["history_appended"])
+            self.assertEqual(meta["history_total_entries"], 2)
 
     def test_append_history_exposes_trend_summary(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
