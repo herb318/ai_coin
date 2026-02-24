@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-24T16:31:07.766677+00:00",
+  "generated_at_utc": "2026-02-24T16:39:13.842893+00:00",
   "mode": "network-status-agent",
   "protocol_name": "Autonomous AI Reward Network",
   "protocol_id": "dpuin-protocol",
@@ -12,7 +12,7 @@
     "production_readiness_false"
   ],
   "recommended_actions": [
-    "Generate strict readiness view with `python3 scripts/network_status_agent.py --production-checks`."
+    "Generate strict readiness view with `python3 scripts/airn.py status --production-checks`."
   ],
   "production_checks": false,
   "network_size_nodes": 5,
@@ -47,8 +47,8 @@
     "started_by_runner": "",
     "started_at_utc": "",
     "last_runner_id": "runner-unknown",
-    "last_run_at_utc": "2026-02-24T16:27:12.659226+00:00",
-    "total_runs": 21,
+    "last_run_at_utc": "2026-02-24T16:39:02.998530+00:00",
+    "total_runs": 25,
     "start_attempts": 0
   },
   "snapshot": {
@@ -239,54 +239,10 @@
       "applied_upgrades": []
     }
   ],
-  "status_fingerprint": "f14800878318d63b84d60b41b3f486addcdf249f91f2a439a8d6f2d503046773",
+  "status_fingerprint": "b13fc7abfd393557de8e5d432bb6d4defb7e52c323341dc7d9bcdd2ad033c947",
   "history_path": "docs/NETWORK_HISTORY.jsonl",
-  "history_total_entries": 11,
+  "history_total_entries": 13,
   "recent_history": [
-    {
-      "generated_at_utc": "2026-02-24T16:11:44.386346+00:00",
-      "status_fingerprint": "12238e72ac3555a72e611cf6c7b2a2f0af8dcd7fe7869dcc7f4687f59a2f36ae",
-      "health_level": "WARN",
-      "status_ok": true,
-      "production_checks": false,
-      "qa_overall_passed": true,
-      "network_size_nodes": 5,
-      "avg_winner_latency_ms": 45.6,
-      "requests_executed": 5,
-      "epoch": 5,
-      "minted_supply": "4807425.3741",
-      "status_reasons": [],
-      "advisories": [
-        "production_readiness_false"
-      ],
-      "recommended_actions": [
-        "Generate strict readiness view with `python3 scripts/network_status_agent.py --production-checks`."
-      ],
-      "previous_history_hash": "ee1ff29be220d0c69c53cdae70803f8b5272afdf6c543900c491eb87b96866f7",
-      "history_hash": "cac7c6a7f82153dba1bca39e3b1cd76922c501d11225ebe5b28518ab8a5c7fcf"
-    },
-    {
-      "generated_at_utc": "2026-02-24T16:12:56.837807+00:00",
-      "status_fingerprint": "17e1ef748ac5fd9f1f568d2d91122224e617816c9ede4ec7cbb58e9a207ba240",
-      "health_level": "WARN",
-      "status_ok": true,
-      "production_checks": false,
-      "qa_overall_passed": true,
-      "network_size_nodes": 5,
-      "avg_winner_latency_ms": 45.6,
-      "requests_executed": 5,
-      "epoch": 5,
-      "minted_supply": "4807425.3741",
-      "status_reasons": [],
-      "advisories": [
-        "production_readiness_false"
-      ],
-      "recommended_actions": [
-        "Generate strict readiness view with `python3 scripts/network_status_agent.py --production-checks`."
-      ],
-      "previous_history_hash": "cac7c6a7f82153dba1bca39e3b1cd76922c501d11225ebe5b28518ab8a5c7fcf",
-      "history_hash": "164dbb31a3b5e44866024012cee1fa3393e45f9aca4d299e5e6c4e8a50409996"
-    },
     {
       "generated_at_utc": "2026-02-24T16:19:44.805010+00:00",
       "status_fingerprint": "c93cc023f8275a8b4d9a4c19ea29e18c587a30a728337761d7580badc5fc5bb4",
@@ -352,14 +308,58 @@
       ],
       "previous_history_hash": "85335b365e9f6b127b8c511672d6703c64fd625710483938642b629ecc942b47",
       "history_hash": "a10b19164417897e3951b1dc00b76dc4e185f55613651390fbe3c3ed3c0e1310"
+    },
+    {
+      "generated_at_utc": "2026-02-24T16:39:02.431049+00:00",
+      "status_fingerprint": "836e00e08ea6943e30c454d80c8b23e7f84c503dd0cc1c9de6115064ad223fdd",
+      "health_level": "WARN",
+      "status_ok": true,
+      "production_checks": false,
+      "qa_overall_passed": true,
+      "network_size_nodes": 5,
+      "avg_winner_latency_ms": 45.6,
+      "requests_executed": 5,
+      "epoch": 5,
+      "minted_supply": "4807425.3741",
+      "status_reasons": [],
+      "advisories": [
+        "production_readiness_false"
+      ],
+      "recommended_actions": [
+        "Generate strict readiness view with `python3 scripts/network_status_agent.py --production-checks`."
+      ],
+      "previous_history_hash": "a10b19164417897e3951b1dc00b76dc4e185f55613651390fbe3c3ed3c0e1310",
+      "history_hash": "4c4c7b3240381d35cec30aa57db6ea5f8b5dc31651b5f18076cea6b212db108d"
+    },
+    {
+      "generated_at_utc": "2026-02-24T16:39:13.842893+00:00",
+      "status_fingerprint": "b13fc7abfd393557de8e5d432bb6d4defb7e52c323341dc7d9bcdd2ad033c947",
+      "health_level": "WARN",
+      "status_ok": true,
+      "production_checks": false,
+      "qa_overall_passed": true,
+      "network_size_nodes": 5,
+      "avg_winner_latency_ms": 45.6,
+      "requests_executed": 5,
+      "epoch": 5,
+      "minted_supply": "4807425.3741",
+      "status_reasons": [],
+      "advisories": [
+        "production_readiness_false"
+      ],
+      "recommended_actions": [
+        "Generate strict readiness view with `python3 scripts/airn.py status --production-checks`."
+      ],
+      "previous_history_hash": "4c4c7b3240381d35cec30aa57db6ea5f8b5dc31651b5f18076cea6b212db108d",
+      "history_hash": "b78f96d2fc1b21165815492e7c35c4b1844437803159cc2d21c0af6b4b18ff5c"
     }
   ],
   "history_trend": {
     "recent_window": 20,
-    "sample_size": 11,
+    "sample_size": 13,
     "health_counts": {
       "OK": 0,
-      "WARN": 11,
+      "WARN": 13,
       "DEGRADED": 0
     },
     "latest_health": "WARN",
@@ -374,10 +374,10 @@
   "history_chain": {
     "enabled": true,
     "valid": true,
-    "tracked_entries": 11,
+    "tracked_entries": 13,
     "legacy_entries": 0,
     "broken_index": -1,
     "broken_reason": "",
-    "latest_hash": "a10b19164417897e3951b1dc00b76dc4e185f55613651390fbe3c3ed3c0e1310"
+    "latest_hash": "b78f96d2fc1b21165815492e7c35c4b1844437803159cc2d21c0af6b4b18ff5c"
   }
 }

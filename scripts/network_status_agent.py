@@ -132,13 +132,13 @@ def _recommended_actions(
         )
     if any(reason in {"qa_failed", "qa_execution_error"} for reason in status_reasons):
         actions.append(
-            "Run `python3 decentralized_ai_network_demo.py --mode qa --production-checks` and fix failing checks."
+            "Run `python3 scripts/airn.py check --production-checks` and fix failing checks."
         )
     if "open_mainnet_failed" in status_reasons:
         actions.append("Inspect launch gate checks and resolve unmet preflight conditions before opening mainnet.")
     if "production_readiness_false" in advisories and not production_checks:
         actions.append(
-            "Generate strict readiness view with `python3 scripts/network_status_agent.py --production-checks`."
+            "Generate strict readiness view with `python3 scripts/airn.py status --production-checks`."
         )
     if not actions and status_reasons:
         actions.append("Investigate status_reasons and rerun QA plus production-checks before publish.")

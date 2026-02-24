@@ -90,29 +90,34 @@ cp .env.example .env
 # Fill .env manually with your private values
 ```
 
-Run demo:
+Simple full check (recommended):
 ```bash
-python3 decentralized_ai_network_demo.py --mode demo
+python3 scripts/airn.py check
 ```
 
-Run QA team suite:
+Strict production check:
 ```bash
-python3 decentralized_ai_network_demo.py --mode qa
+python3 scripts/airn.py check --production-checks
 ```
 
-Run production checks:
+Run only demo:
 ```bash
-python3 decentralized_ai_network_demo.py --mode qa --production-checks
+python3 scripts/airn.py demo
 ```
 
-Practical post-boot usage and network-AI example scenarios:
-- [AI Usage Guide](docs/AI_USAGE_GUIDE.md)
+Run only QA:
+```bash
+python3 scripts/airn.py qa
+```
 
 Continuous loop operator (runs QA+demo repeatedly):
 
 ```bash
-nohup python3 scripts/run_operator_loop.py --interval-seconds 120 --include-status-agent > runtime/operator_loop.out 2>&1 &
+nohup python3 scripts/airn.py loop --include-status-agent --interval-seconds 120 > runtime/operator_loop.out 2>&1 &
 ```
+
+Practical post-boot usage and network-AI example scenarios:
+- [AI Usage Guide](docs/AI_USAGE_GUIDE.md)
 
 ## Docker One-Shot Automation
 
@@ -138,12 +143,12 @@ docker compose --profile operator up --build operator-loop
 
 1. Arm sentinel (owner only):
 ```bash
-python3 decentralized_ai_network_demo.py --arm-final-launch --launch-state-path runtime/launch_state.json
+python3 scripts/airn.py launch-arm --launch-state-path runtime/launch_state.json
 ```
 
 2. Check state:
 ```bash
-python3 decentralized_ai_network_demo.py --show-launch-state --launch-state-path runtime/launch_state.json
+python3 scripts/airn.py launch-state --launch-state-path runtime/launch_state.json
 ```
 
 3. After arm, any non-owner one-time execution triggers unstoppable live start.
@@ -202,13 +207,13 @@ ls docs/NETWORK_STATUS.md docs/NETWORK_STATUS.json
 If missing or outdated, regenerate:
 
 ```bash
-python3 scripts/network_status_agent.py
+python3 scripts/airn.py status
 ```
 
 Strict production readiness view:
 
 ```bash
-python3 scripts/network_status_agent.py --production-checks
+python3 scripts/airn.py status --production-checks
 ```
 
 Outputs:

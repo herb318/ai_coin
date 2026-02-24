@@ -8,8 +8,7 @@ services:
     volumes:
       - ./:/app
     command:
-      - --mode
-      - oneshot
+      - check
 
   oneshot-prod:
     profiles: ["production"]
@@ -23,8 +22,7 @@ services:
     volumes:
       - ./:/app
     command:
-      - --mode
-      - oneshot
+      - check
       - --production-checks
 
   operator-loop:
@@ -39,8 +37,7 @@ services:
     volumes:
       - ./:/app
     command:
-      - --mode
-      - operator-loop
+      - loop
       - --production-checks
       - --include-status-agent
       - --interval-seconds

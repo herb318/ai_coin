@@ -1,30 +1,30 @@
 import unittest
-from pathlib import Path
 from unittest.mock import patch
 
-from scripts.docker_runner import (
-    build_oneshot_steps,
-    build_operator_loop_command,
-    run_oneshot,
-)
+from scripts.airn_ops import build_check_steps, build_operator_loop_command
+from scripts.docker_runner import main
 
 
 class TestDockerRunner(unittest.TestCase):
-    def test_build_oneshot_steps_default(self) -> None:
-        steps = build_oneshot_steps(production_checks=False)
+    def test_build_check_steps_default(self) -> None:
+        steps = build_check_steps(production_checks=False, include_status_agent=True)
         self.assertEqual(len(steps), 6)
         self.assertEqual(steps[0].name, "unit-tests")
-        self.assertIn("decentralized_ai_network_demo.py", steps[3].command)
         self.assertNotIn("--production-checks", steps[3].command)
         self.assertNotIn("--production-checks", steps[4].command)
         self.assertNotIn("--production-checks", steps[5].command)
 
-    def test_build_oneshot_steps_production(self) -> None:
-        steps = build_oneshot_steps(production_checks=True)
+    def test_build_check_steps_production(self) -> None:
+        steps = build_check_steps(production_checks=True, include_status_agent=True)
         self.assertEqual(len(steps), 6)
         self.assertIn("--production-checks", steps[3].command)
         self.assertIn("--production-checks", steps[4].command)
         self.assertIn("--production-checks", steps[5].command)
+
+    def test_build_check_steps_without_status(self) -> None:
+        steps = build_check_steps(production_checks=False, include_status_agent=False)
+        self.assertEqual(len(steps), 5)
+        self.assertEqual(steps[-1].name, "demo")
 
     def test_build_operator_loop_command(self) -> None:
         cmd = build_operator_loop_command(
@@ -33,6 +33,7 @@ class TestDockerRunner(unittest.TestCase):
             interval_seconds=30,
             max_consecutive_failures=2,
             once=True,
+            launch_state_path="runtime/custom_launch_state.json",
         )
         self.assertIn("scripts/run_operator_loop.py", cmd)
         self.assertIn("--production-checks", cmd)
@@ -41,32 +42,33 @@ class TestDockerRunner(unittest.TestCase):
         self.assertIn("30", cmd)
         self.assertIn("2", cmd)
 
-    @patch("builtins.print")
-    @patch("scripts.docker_runner.run_step")
-    def test_run_oneshot_stops_on_first_failure(self, mock_run_step, _mock_print) -> None:
-        mock_run_step.side_effect = [
-            {
-                "step": "unit-tests",
-                "command": [],
-                "returncode": 0,
-                "passed": True,
-                "started_at_utc": "2026-01-01T00:00:00+00:00",
-                "ended_at_utc": "2026-01-01T00:00:01+00:00",
-                "duration_ms": 1.0,
-            },
-            {
-                "step": "security-bandit",
-                "command": [],
-                "returncode": 3,
-                "passed": False,
-                "started_at_utc": "2026-01-01T00:00:02+00:00",
-                "ended_at_utc": "2026-01-01T00:00:03+00:00",
-                "duration_ms": 1.0,
-            },
-        ]
-        code = run_oneshot(production_checks=False, project_root=Path("."))
-        self.assertEqual(code, 3)
-        self.assertEqual(mock_run_step.call_count, 2)
+    @patch("scripts.docker_runner.print_summary")
+    @patch("scripts.docker_runner.run_check_pipeline")
+    def test_main_oneshot_calls_pipeline(self, mock_pipeline, _mock_print_summary) -> None:
+        mock_pipeline.return_value = ({"overall_passed": True}, 0)
+        with patch(
+            "sys.argv",
+            ["docker_runner.py", "--mode", "oneshot", "--production-checks"],
+        ):
+            with self.assertRaises(SystemExit) as exc:
+                main()
+        self.assertEqual(exc.exception.code, 0)
+        self.assertTrue(mock_pipeline.called)
+
+    @patch("scripts.docker_runner.run_command")
+    @patch("scripts.docker_runner.build_operator_loop_command")
+    def test_main_operator_loop_calls_run_command(self, mock_build_cmd, mock_run_command) -> None:
+        mock_build_cmd.return_value = ["python3", "scripts/run_operator_loop.py", "--once"]
+        mock_run_command.return_value = 0
+        with patch(
+            "sys.argv",
+            ["docker_runner.py", "--mode", "operator-loop", "--once"],
+        ):
+            with self.assertRaises(SystemExit) as exc:
+                main()
+        self.assertEqual(exc.exception.code, 0)
+        self.assertTrue(mock_build_cmd.called)
+        self.assertTrue(mock_run_command.called)
 
 
 if __name__ == "__main__":

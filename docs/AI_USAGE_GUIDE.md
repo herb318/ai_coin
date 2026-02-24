@@ -17,18 +17,18 @@ Basic run:
 
 Or run from source:
 
-- `python3 decentralized_ai_network_demo.py --mode demo`
+- `python3 scripts/airn.py demo`
 
 ## 2) Main Run Modes
 
 - Demo mode:
-  - `python3 decentralized_ai_network_demo.py --mode demo`
+  - `python3 scripts/airn.py demo`
   - Runs representative inference requests through distributed nodes.
 - QA mode:
-  - `python3 decentralized_ai_network_demo.py --mode qa`
+  - `python3 scripts/airn.py qa`
   - Runs launch/security/economy/team/privacy QA agents.
 - Production checks:
-  - `python3 decentralized_ai_network_demo.py --mode qa --production-checks`
+  - `python3 scripts/airn.py check --production-checks`
   - Requires real env values (`OWNER_ID`, `NETWORK_SHARED_SECRET`, `PRIVATE_RPC_URL`, `PRIVATE_API_TOKEN`, `WALLET_*`).
 
 ## 3) How to Read Output Quickly
@@ -43,9 +43,9 @@ Key fields in JSON output:
 
 Observed local run behavior:
 
-- `--mode demo`: succeeds with `mainnet_open=true`.
-- `--mode qa`: succeeds with `overall_passed=true`.
-- `--mode qa --production-checks`: fails without production env (expected).
+- `python3 scripts/airn.py demo`: succeeds with `mainnet_open=true`.
+- `python3 scripts/airn.py qa`: succeeds with `overall_passed=true`.
+- `python3 scripts/airn.py check --production-checks`: fails without production env (expected).
 
 ## 4) Network-AI Strength Examples
 
@@ -83,10 +83,10 @@ Observed local run behavior:
 
 ## 5) Recommended Operator Flow
 
-1. Run `--mode qa` after every change.
-2. Run `--mode demo` to validate end-to-end behavior and reward distribution.
+1. Run `python3 scripts/airn.py qa` after every change.
+2. Run `python3 scripts/airn.py demo` to validate end-to-end behavior and reward distribution.
 3. Run status agent for shared visibility:
-   - `python3 scripts/network_status_agent.py`
+   - `python3 scripts/airn.py status`
 4. Before public push, run:
    - `python3 scripts/sanitize_for_git_open.py --root .`
 
@@ -96,7 +96,7 @@ Run continuously in background:
 
 ```bash
 cd <repo-root>
-nohup python3 scripts/run_operator_loop.py --interval-seconds 120 --include-status-agent > runtime/operator_loop.out 2>&1 &
+nohup python3 scripts/airn.py loop --interval-seconds 120 --include-status-agent > runtime/operator_loop.out 2>&1 &
 ```
 
 Check loop status:
@@ -115,7 +115,7 @@ touch runtime/STOP_OPERATOR_LOOP
 Immediate single-cycle check:
 
 ```bash
-python3 scripts/run_operator_loop.py --once
+python3 scripts/airn.py loop --once
 ```
 
 ## 7) Common Failure Cause

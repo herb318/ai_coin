@@ -1,6 +1,6 @@
 # Autonomous AI Reward Network Status (DPUIN)
 
-Generated at: `2026-02-24T16:31:07.766677+00:00`
+Generated at: `2026-02-24T16:39:13.842893+00:00`
 
 ## Summary
 
@@ -29,7 +29,7 @@ Generated at: `2026-02-24T16:31:07.766677+00:00`
 
 ## Recommended Actions
 
-- Generate strict readiness view with `python3 scripts/network_status_agent.py --production-checks`.
+- Generate strict readiness view with `python3 scripts/airn.py status --production-checks`.
 
 ## Production Readiness
 
@@ -52,33 +52,33 @@ Generated at: `2026-02-24T16:31:07.766677+00:00`
 ## Recent History
 
 - History file: `docs/NETWORK_HISTORY.jsonl`
-- Total history entries: `11`
+- Total history entries: `13`
 - History appended this run: `True`
 - History append blocked: `False`
 - History chain repaired: `False`
-- Status fingerprint: `f14800878318d63b84d60b41b3f486addcdf249f91f2a439a8d6f2d503046773`
+- Status fingerprint: `b13fc7abfd393557de8e5d432bb6d4defb7e52c323341dc7d9bcdd2ad033c947`
 
-- `2026-02-24T16:11:44.386346+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
-- `2026-02-24T16:12:56.837807+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
 - `2026-02-24T16:19:44.805010+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
 - `2026-02-24T16:26:47.005970+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
 - `2026-02-24T16:31:07.766677+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
+- `2026-02-24T16:39:02.431049+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
+- `2026-02-24T16:39:13.842893+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
 
 ## History Integrity
 
 - Chain enabled: `True`
 - Chain valid: `True`
-- Tracked entries: `11`
+- Tracked entries: `13`
 - Legacy entries: `0`
-- Latest chain hash: `a10b19164417897e3951b1dc00b76dc4e185f55613651390fbe3c3ed3c0e1310`
+- Latest chain hash: `b78f96d2fc1b21165815492e7c35c4b1844437803159cc2d21c0af6b4b18ff5c`
 - Broken index: `-1`
 - Broken reason: `-`
 
 ## History Trend
 
 - Window size: `20`
-- Sample size: `11`
-- Health counts: `OK=0, WARN=11, DEGRADED=0`
+- Sample size: `13`
+- Health counts: `OK=0, WARN=13, DEGRADED=0`
 - Latest health: `WARN`
 - Previous health: `WARN`
 - Health changed: `False`
@@ -92,7 +92,7 @@ Generated at: `2026-02-24T16:31:07.766677+00:00`
 - Successful open: `False`
 - Started by: ``
 - Last runner: `runner-unknown`
-- Total runs: `21`
+- Total runs: `25`
 - Start attempts: `0`
 
 ## Preflight Checks

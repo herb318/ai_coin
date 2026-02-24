@@ -11,5 +11,5 @@ RUN python -m pip install --upgrade pip \
 
 COPY . /app
 
-ENTRYPOINT ["python3", "scripts/docker_runner.py"]
-CMD ["--mode", "oneshot"]
+ENTRYPOINT ["python3", "scripts/airn.py"]
+CMD ["check"]

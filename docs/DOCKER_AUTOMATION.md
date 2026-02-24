@@ -52,5 +52,5 @@ docker compose --profile operator down
 
 ```bash
 docker build -t dpuin-protocol:local .
-docker run --rm -v "$(pwd):/app" dpuin-protocol:local --mode oneshot
+docker run --rm -v "$(pwd):/app" dpuin-protocol:local check
 ```
