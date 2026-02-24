@@ -46,11 +46,38 @@ def should_block_publish(
     status_payload: Dict[str, Any],
     production_checks: bool,
     allow_failing_status: bool,
+    fail_on_warn: bool = False,
 ) -> Tuple[bool, str]:
     if not production_checks or allow_failing_status:
         return False, ""
-    if status_payload.get("status_ok", False):
+    health_level = str(status_payload.get("health_level", "")).upper().strip()
+    if not health_level:
+        has_reasons = bool(status_payload.get("status_reasons"))
+        has_advisories = bool(status_payload.get("advisories"))
+        if has_reasons:
+            health_level = "DEGRADED"
+        elif has_advisories:
+            health_level = "WARN"
+        elif status_payload.get("status_ok", False):
+            health_level = "OK"
+        else:
+            health_level = "DEGRADED"
+
+    if health_level == "OK":
         return False, ""
+    if health_level == "WARN" and not fail_on_warn:
+        return False, ""
+
+    if health_level == "WARN":
+        advisories = status_payload.get("advisories", [])
+        advisory_text = ", ".join(str(item) for item in advisories) if advisories else "unknown advisory"
+        return (
+            True,
+            "Generated status is WARN under --production-checks with --fail-on-warn. "
+            f"Advisories: {advisory_text}. "
+            "Resolve advisories or remove --fail-on-warn.",
+        )
+
     reasons = status_payload.get("status_reasons", [])
     reason_text = ", ".join(str(reason) for reason in reasons) if reasons else "unknown reason"
     return (
@@ -90,6 +117,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Allow commit/push even if generated status is degraded.",
     )
+    parser.add_argument(
+        "--fail-on-warn",
+        action="store_true",
+        help="Treat WARN health status as blocking during --production-checks.",
+    )
     return parser.parse_args()
 
 
@@ -113,6 +145,7 @@ def main() -> None:
         status_payload=status_payload,
         production_checks=args.production_checks,
         allow_failing_status=args.allow_failing_status,
+        fail_on_warn=args.fail_on_warn,
     )
     if should_block:
         raise RuntimeError(reason)

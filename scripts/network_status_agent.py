@@ -64,6 +64,14 @@ def _production_readiness_snapshot() -> Dict[str, Any]:
     }
 
 
+def _health_level(status_reasons: List[str], advisories: List[str]) -> str:
+    if status_reasons:
+        return "DEGRADED"
+    if advisories:
+        return "WARN"
+    return "OK"
+
+
 def build_status_payload(production_checks: bool, launch_state_path: str) -> Dict[str, Any]:
     identities = IdentityRegistry.from_env()
     network = TranslationNetwork()
@@ -108,6 +116,7 @@ def build_status_payload(production_checks: bool, launch_state_path: str) -> Dic
         advisories.append("production_readiness_false")
 
     status_ok = not status_reasons
+    health_level = _health_level(status_reasons=status_reasons, advisories=advisories)
 
     payload = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -115,6 +124,7 @@ def build_status_payload(production_checks: bool, launch_state_path: str) -> Dic
         "protocol_name": PROTOCOL_NAME,
         "protocol_id": PROTOCOL_ID,
         "status_ok": status_ok,
+        "health_level": health_level,
         "status_reasons": status_reasons,
         "launch_error": launch_error,
         "qa_error": qa["error"],
@@ -154,7 +164,7 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     status_reason_lines = "\n".join(f"- `{reason}`" for reason in status_reasons) or "- none"
     advisory_lines = "\n".join(f"- `{advisory}`" for advisory in advisories) or "- none"
     prod_checks_lines = "\n".join(f"- `{name}`: `{passed}`" for name, passed in prod_checks.items()) or "- none"
-    health = "OK" if payload.get("status_ok") else "DEGRADED"
+    health = payload.get("health_level", "DEGRADED")
     balances = snapshot.get("balances", {})
 
     return f"""# DPUIN Network Status

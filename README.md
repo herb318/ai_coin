@@ -145,6 +145,7 @@ GitHub view entrypoint:
 
 Health fields in JSON:
 - `status_ok`: overall health flag
+- `health_level`: `OK` / `WARN` / `DEGRADED`
 - `status_reasons`: machine-readable degraded reasons
 - `advisories`: non-fatal warnings (for example local run while production readiness is false)
 - `production_readiness.ready`: strict production readiness result
@@ -161,6 +162,7 @@ python3 scripts/auto_verify_publish.py --production-checks
 
 Behavior:
 - With `--production-checks`, auto publish aborts if `status_ok=false`.
+- Optional strict mode: add `--fail-on-warn` to block when `health_level=WARN`.
 - Use `--allow-failing-status` only when you explicitly want to publish degraded status.
 
 ## License

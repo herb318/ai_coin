@@ -1,9 +1,10 @@
 {
-  "generated_at_utc": "2026-02-24T14:34:14.324777+00:00",
+  "generated_at_utc": "2026-02-24T14:36:59.608616+00:00",
   "mode": "network-status-agent",
   "protocol_name": "Distributed Proof-of-Useful-Inference Network",
   "protocol_id": "dpuin-protocol",
   "status_ok": true,
+  "health_level": "WARN",
   "status_reasons": [],
   "launch_error": "",
   "qa_error": "",

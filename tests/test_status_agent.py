@@ -32,6 +32,7 @@ class TestStatusAgent(unittest.TestCase):
                 payload = build_status_payload(production_checks=False, launch_state_path=state_path)
 
         self.assertTrue(payload["status_ok"])
+        self.assertEqual(payload["health_level"], "WARN")
         self.assertEqual(payload["status_reasons"], [])
         self.assertIn("production_readiness", payload)
         self.assertFalse(payload["production_readiness"]["ready"])
@@ -48,6 +49,7 @@ class TestStatusAgent(unittest.TestCase):
                 payload = build_status_payload(production_checks=True, launch_state_path=state_path)
 
         self.assertFalse(payload["status_ok"])
+        self.assertEqual(payload["health_level"], "DEGRADED")
         self.assertIn("preflight:key_management_passed", payload["status_reasons"])
         self.assertIn("preflight:account_registry_passed", payload["status_reasons"])
         self.assertFalse(payload["production_readiness"]["ready"])
@@ -64,6 +66,7 @@ class TestStatusAgent(unittest.TestCase):
                 payload = build_status_payload(production_checks=True, launch_state_path=state_path)
 
         self.assertTrue(payload["status_ok"])
+        self.assertEqual(payload["health_level"], "OK")
         self.assertTrue(all(payload["preflight_checks"].values()))
         self.assertTrue(payload["production_readiness"]["ready"])
         self.assertEqual(payload["advisories"], [])
