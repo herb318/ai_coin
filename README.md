@@ -149,6 +149,7 @@ Health fields in JSON:
 - `health_level`: `OK` / `WARN` / `DEGRADED`
 - `status_reasons`: machine-readable degraded reasons
 - `advisories`: non-fatal warnings (for example local run while production readiness is false)
+- `recommended_actions`: immediate operator actions generated from reasons/advisories
 - `production_readiness.ready`: strict production readiness result
 - `production_readiness.checks`: strict production check breakdown
 - `recent_history`: latest history entries

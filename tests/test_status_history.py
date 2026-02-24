@@ -18,6 +18,7 @@ def _payload(index: int) -> dict:
         "requests_executed": 5,
         "status_reasons": [],
         "advisories": [],
+        "recommended_actions": [],
         "snapshot": {"epoch": index, "minted_supply": "4800000.0000"},
     }
 
@@ -32,6 +33,7 @@ class TestStatusHistory(unittest.TestCase):
             self.assertEqual(meta["history_total_entries"], 1)
             self.assertEqual(len(meta["recent_history"]), 1)
             self.assertEqual(meta["recent_history"][0]["epoch"], 1)
+            self.assertEqual(meta["recent_history"][0]["recommended_actions"], [])
 
     def test_append_history_trims_to_max_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

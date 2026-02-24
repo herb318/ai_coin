@@ -72,6 +72,35 @@ def _health_level(status_reasons: List[str], advisories: List[str]) -> str:
     return "OK"
 
 
+def _recommended_actions(
+    status_reasons: List[str],
+    advisories: List[str],
+    production_checks: bool,
+) -> List[str]:
+    actions: List[str] = []
+    if any(reason == "preflight:key_management_passed" for reason in status_reasons):
+        actions.append(
+            "Set a strong NETWORK_SHARED_SECRET (>=32 chars, mixed classes) and rerun with --production-checks."
+        )
+    if any(reason == "preflight:account_registry_passed" for reason in status_reasons):
+        actions.append(
+            "Set OWNER_ID, PRIVATE_RPC_URL, PRIVATE_API_TOKEN, and unique WALLET_* values in .env for production."
+        )
+    if any(reason in {"qa_failed", "qa_execution_error"} for reason in status_reasons):
+        actions.append(
+            "Run `python3 decentralized_ai_network_demo.py --mode qa --production-checks` and fix failing checks."
+        )
+    if "open_mainnet_failed" in status_reasons:
+        actions.append("Inspect launch gate checks and resolve unmet preflight conditions before opening mainnet.")
+    if "production_readiness_false" in advisories and not production_checks:
+        actions.append(
+            "Generate strict readiness view with `python3 scripts/network_status_agent.py --production-checks`."
+        )
+    if not actions and status_reasons:
+        actions.append("Investigate status_reasons and rerun QA plus production-checks before publish.")
+    return actions
+
+
 def _history_entry(payload: Dict[str, Any]) -> Dict[str, Any]:
     snapshot = payload.get("snapshot", {})
     return {
@@ -87,6 +116,7 @@ def _history_entry(payload: Dict[str, Any]) -> Dict[str, Any]:
         "minted_supply": snapshot.get("minted_supply"),
         "status_reasons": list(payload.get("status_reasons", [])),
         "advisories": list(payload.get("advisories", [])),
+        "recommended_actions": list(payload.get("recommended_actions", [])),
     }
 
 
@@ -233,6 +263,11 @@ def build_status_payload(production_checks: bool, launch_state_path: str) -> Dic
 
     status_ok = not status_reasons
     health_level = _health_level(status_reasons=status_reasons, advisories=advisories)
+    recommended_actions = _recommended_actions(
+        status_reasons=status_reasons,
+        advisories=advisories,
+        production_checks=production_checks,
+    )
 
     payload = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -245,6 +280,7 @@ def build_status_payload(production_checks: bool, launch_state_path: str) -> Dic
         "launch_error": launch_error,
         "qa_error": qa["error"],
         "advisories": advisories,
+        "recommended_actions": recommended_actions,
         "production_checks": production_checks,
         "network_size_nodes": len(network.nodes),
         "avg_winner_latency_ms": round(avg_latency, 2),
@@ -269,6 +305,7 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     prod_checks = prod_readiness.get("checks", {})
     status_reasons = payload.get("status_reasons", [])
     advisories = payload.get("advisories", [])
+    recommended_actions = payload.get("recommended_actions", [])
     recent_history = payload.get("recent_history", [])
     history_trend = payload.get("history_trend", {})
     history_total_entries = payload.get("history_total_entries", 0)
@@ -283,6 +320,7 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     ) or "- none"
     status_reason_lines = "\n".join(f"- `{reason}`" for reason in status_reasons) or "- none"
     advisory_lines = "\n".join(f"- `{advisory}`" for advisory in advisories) or "- none"
+    recommended_action_lines = "\n".join(f"- {action}" for action in recommended_actions) or "- none"
     prod_checks_lines = "\n".join(f"- `{name}`: `{passed}`" for name, passed in prod_checks.items()) or "- none"
     recent_history_lines = "\n".join(
         f"- `{item.get('generated_at_utc')}` | health=`{item.get('health_level')}` | "
@@ -315,6 +353,10 @@ Generated at: `{payload['generated_at_utc']}`
 ## Advisories
 
 {advisory_lines}
+
+## Recommended Actions
+
+{recommended_action_lines}
 
 ## Production Readiness
 

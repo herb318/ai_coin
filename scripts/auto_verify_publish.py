@@ -71,19 +71,25 @@ def should_block_publish(
     if health_level == "WARN":
         advisories = status_payload.get("advisories", [])
         advisory_text = ", ".join(str(item) for item in advisories) if advisories else "unknown advisory"
+        actions = status_payload.get("recommended_actions", [])
+        action_text = " | ".join(str(action) for action in actions[:3]) if actions else "No action suggestions available."
         return (
             True,
             "Generated status is WARN under --production-checks with --fail-on-warn. "
             f"Advisories: {advisory_text}. "
+            f"Actions: {action_text}. "
             "Resolve advisories or remove --fail-on-warn.",
         )
 
     reasons = status_payload.get("status_reasons", [])
     reason_text = ", ".join(str(reason) for reason in reasons) if reasons else "unknown reason"
+    actions = status_payload.get("recommended_actions", [])
+    action_text = " | ".join(str(action) for action in actions[:3]) if actions else "No action suggestions available."
     return (
         True,
         "Generated status is degraded under --production-checks. "
         f"Reasons: {reason_text}. "
+        f"Actions: {action_text}. "
         "Fix environment/security checks or pass --allow-failing-status.",
     )
 

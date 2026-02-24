@@ -22,6 +22,7 @@ class TestAutoVerifyPublish(unittest.TestCase):
                 "status_ok": False,
                 "health_level": "DEGRADED",
                 "status_reasons": ["preflight:key_management_passed"],
+                "recommended_actions": ["Set NETWORK_SHARED_SECRET and retry."],
             },
             production_checks=True,
             allow_failing_status=False,
@@ -29,6 +30,7 @@ class TestAutoVerifyPublish(unittest.TestCase):
         self.assertTrue(blocked)
         self.assertIn("degraded", reason)
         self.assertIn("preflight:key_management_passed", reason)
+        self.assertIn("NETWORK_SHARED_SECRET", reason)
 
     def test_should_not_block_when_allow_failing_status_enabled(self) -> None:
         blocked, reason = should_block_publish(
@@ -60,7 +62,12 @@ class TestAutoVerifyPublish(unittest.TestCase):
 
     def test_should_block_warn_when_fail_on_warn_enabled(self) -> None:
         blocked, reason = should_block_publish(
-            status_payload={"status_ok": True, "health_level": "WARN", "advisories": ["production_readiness_false"]},
+            status_payload={
+                "status_ok": True,
+                "health_level": "WARN",
+                "advisories": ["production_readiness_false"],
+                "recommended_actions": ["Run status agent with --production-checks."],
+            },
             production_checks=True,
             allow_failing_status=False,
             fail_on_warn=True,
@@ -68,6 +75,7 @@ class TestAutoVerifyPublish(unittest.TestCase):
         self.assertTrue(blocked)
         self.assertIn("WARN", reason)
         self.assertIn("production_readiness_false", reason)
+        self.assertIn("--production-checks", reason)
 
     def test_load_status_payload_reads_valid_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
