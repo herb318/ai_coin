@@ -235,6 +235,12 @@ class UnstoppableLaunchState:
     armed: bool = False
     unstoppable_started: bool = False
     successful_open: bool = False
+    paused: bool = False
+    pause_reason: str = ""
+    paused_by_runner: str = ""
+    paused_at_utc: str = ""
+    resumed_by_runner: str = ""
+    resumed_at_utc: str = ""
     started_by_runner: str = ""
     started_at_utc: str = ""
     last_runner_id: str = ""
@@ -248,6 +254,12 @@ class UnstoppableLaunchState:
             "armed": self.armed,
             "unstoppable_started": self.unstoppable_started,
             "successful_open": self.successful_open,
+            "paused": self.paused,
+            "pause_reason": self.pause_reason,
+            "paused_by_runner": self.paused_by_runner,
+            "paused_at_utc": self.paused_at_utc,
+            "resumed_by_runner": self.resumed_by_runner,
+            "resumed_at_utc": self.resumed_at_utc,
             "started_by_runner": self.started_by_runner,
             "started_at_utc": self.started_at_utc,
             "last_runner_id": self.last_runner_id,
@@ -285,6 +297,12 @@ class UnstoppableLaunchSentinel:
             armed=bool(raw.get("armed", False)),
             unstoppable_started=bool(raw.get("unstoppable_started", False)),
             successful_open=bool(raw.get("successful_open", False)),
+            paused=bool(raw.get("paused", False)),
+            pause_reason=str(raw.get("pause_reason", "")),
+            paused_by_runner=str(raw.get("paused_by_runner", "")),
+            paused_at_utc=str(raw.get("paused_at_utc", "")),
+            resumed_by_runner=str(raw.get("resumed_by_runner", "")),
+            resumed_at_utc=str(raw.get("resumed_at_utc", "")),
             started_by_runner=str(raw.get("started_by_runner", "")),
             started_at_utc=str(raw.get("started_at_utc", "")),
             last_runner_id=str(raw.get("last_runner_id", "")),
@@ -309,11 +327,40 @@ class UnstoppableLaunchSentinel:
         self._save(self.state)
         return self.snapshot()
 
+    def pause(self, runner_id: str, reason: str) -> Dict[str, Any]:
+        if runner_id != self.state.owner_id:
+            raise PermissionError("Only OWNER_ID can pause network.")
+        clean_reason = reason.strip()
+        if not clean_reason:
+            raise ValueError("pause_reason is required.")
+        now_utc = datetime.now(timezone.utc).isoformat()
+        self.state.paused = True
+        self.state.pause_reason = clean_reason
+        self.state.paused_by_runner = runner_id
+        self.state.paused_at_utc = now_utc
+        self._save(self.state)
+        return self.snapshot()
+
+    def resume(self, runner_id: str) -> Dict[str, Any]:
+        if runner_id != self.state.owner_id:
+            raise PermissionError("Only OWNER_ID can resume network.")
+        now_utc = datetime.now(timezone.utc).isoformat()
+        self.state.paused = False
+        self.state.pause_reason = ""
+        self.state.resumed_by_runner = runner_id
+        self.state.resumed_at_utc = now_utc
+        self._save(self.state)
+        return self.snapshot()
+
     def record_execution(self, runner_id: str) -> Dict[str, Any]:
         now_utc = datetime.now(timezone.utc).isoformat()
         self.state.total_runs += 1
         self.state.last_runner_id = runner_id
         self.state.last_run_at_utc = now_utc
+
+        if self.state.paused:
+            self._save(self.state)
+            return self.snapshot()
 
         if self.state.unstoppable_started:
             self.state.start_attempts += 1
@@ -1129,6 +1176,21 @@ def parse_args() -> argparse.Namespace:
         help="Arm final launch sentinel. Only OWNER_ID can arm it.",
     )
     parser.add_argument(
+        "--pause-network",
+        action="store_true",
+        help="Pause network execution. Only OWNER_ID can use this.",
+    )
+    parser.add_argument(
+        "--pause-reason",
+        default="",
+        help="Required reason when using --pause-network.",
+    )
+    parser.add_argument(
+        "--resume-network",
+        action="store_true",
+        help="Resume network execution. Only OWNER_ID can use this.",
+    )
+    parser.add_argument(
         "--show-launch-state",
         action="store_true",
         help="Print launch sentinel state and exit.",
@@ -1150,11 +1212,31 @@ def main() -> None:
     if args.arm_final_launch:
         sentinel.arm(runner_id)
 
+    if args.pause_network:
+        sentinel.pause(runner_id, args.pause_reason)
+        print(json.dumps(to_jsonable({"launch_sentinel": sentinel.snapshot()}), ensure_ascii=False, indent=2))
+        return
+
+    if args.resume_network:
+        sentinel.resume(runner_id)
+        print(json.dumps(to_jsonable({"launch_sentinel": sentinel.snapshot()}), ensure_ascii=False, indent=2))
+        return
+
     if args.show_launch_state:
         print(json.dumps(to_jsonable({"launch_sentinel": sentinel.snapshot()}), ensure_ascii=False, indent=2))
         return
 
     launch_state = sentinel.record_execution(runner_id)
+    if launch_state["paused"]:
+        payload = {
+            "mode": "paused",
+            "runner_id": runner_id,
+            "message": "Network is paused by OWNER_ID.",
+            "launch_sentinel": launch_state,
+        }
+        print(json.dumps(to_jsonable(payload), ensure_ascii=False, indent=2))
+        return
+
     force_live_mode = bool(launch_state["unstoppable_started"])
 
     effective_mode = args.mode

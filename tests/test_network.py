@@ -102,6 +102,27 @@ class TestUnstoppableLaunchSentinel(unittest.TestCase):
             with self.assertRaises(PermissionError):
                 sentinel.arm("intruder")
 
+    def test_owner_can_pause_and_resume(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            state_path = os.path.join(tmp_dir, "launch_state.json")
+            sentinel = UnstoppableLaunchSentinel(state_path=state_path, owner_id="owner-main")
+            paused = sentinel.pause("owner-main", "maintenance")
+            self.assertTrue(paused["paused"])
+            self.assertEqual(paused["pause_reason"], "maintenance")
+
+            resumed = sentinel.resume("owner-main")
+            self.assertFalse(resumed["paused"])
+            self.assertEqual(resumed["pause_reason"], "")
+
+    def test_non_owner_cannot_pause_or_resume(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            state_path = os.path.join(tmp_dir, "launch_state.json")
+            sentinel = UnstoppableLaunchSentinel(state_path=state_path, owner_id="owner-main")
+            with self.assertRaises(PermissionError):
+                sentinel.pause("intruder", "bad")
+            with self.assertRaises(PermissionError):
+                sentinel.resume("intruder")
+
 
 if __name__ == "__main__":
     unittest.main()
