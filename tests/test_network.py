@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from decentralized_ai_network_demo import (
     IdentityRegistry,
+    RequestSecurity,
     TranslationNetwork,
     UnstoppableLaunchSentinel,
     now_ts,
@@ -22,6 +23,28 @@ class TestIdentityRegistry(unittest.TestCase):
                     "node-tyo-2": "dup-wallet",
                 },
             )
+
+
+class TestRequestSecurityConfig(unittest.TestCase):
+    def test_rejects_non_positive_skew(self) -> None:
+        with self.assertRaises(ValueError):
+            RequestSecurity(b"x" * 32, max_skew_seconds=0)
+
+    def test_rejects_excessive_skew(self) -> None:
+        with self.assertRaises(ValueError):
+            RequestSecurity(b"x" * 32, max_skew_seconds=3601)
+
+    def test_rejects_non_positive_rate_limit(self) -> None:
+        with self.assertRaises(ValueError):
+            RequestSecurity(b"x" * 32, max_requests_per_minute=0)
+
+    def test_rejects_excessive_rate_limit(self) -> None:
+        with self.assertRaises(ValueError):
+            RequestSecurity(b"x" * 32, max_requests_per_minute=10001)
+
+    def test_rejects_non_positive_seen_entries(self) -> None:
+        with self.assertRaises(ValueError):
+            RequestSecurity(b"x" * 32, max_seen_entries=0)
 
 
 class TestLaunchGate(unittest.TestCase):

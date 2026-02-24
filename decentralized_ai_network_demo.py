@@ -635,6 +635,9 @@ class RequestSecurity:
     SOURCE_TEXT_MAX_CHARS = 4096
     NONCE_HEX_LEN = 32
     SIGNATURE_HEX_LEN = 64
+    MAX_ALLOWED_SKEW_SECONDS = 3600
+    MAX_ALLOWED_REQUESTS_PER_MINUTE = 10000
+    MAX_ALLOWED_SEEN_ENTRIES = 1_000_000
 
     def __init__(
         self,
@@ -646,6 +649,22 @@ class RequestSecurity:
     ) -> None:
         if len(shared_secret) < 32:
             raise ValueError("Shared secret must be at least 32 bytes.")
+        if not isinstance(max_skew_seconds, int) or max_skew_seconds <= 0:
+            raise ValueError("max_skew_seconds must be a positive integer.")
+        if max_skew_seconds > self.MAX_ALLOWED_SKEW_SECONDS:
+            raise ValueError(
+                f"max_skew_seconds must be <= {self.MAX_ALLOWED_SKEW_SECONDS} for safe replay window."
+            )
+        if not isinstance(max_requests_per_minute, int) or max_requests_per_minute <= 0:
+            raise ValueError("max_requests_per_minute must be a positive integer.")
+        if max_requests_per_minute > self.MAX_ALLOWED_REQUESTS_PER_MINUTE:
+            raise ValueError(
+                f"max_requests_per_minute must be <= {self.MAX_ALLOWED_REQUESTS_PER_MINUTE}."
+            )
+        if not isinstance(max_seen_entries, int) or max_seen_entries <= 0:
+            raise ValueError("max_seen_entries must be a positive integer.")
+        if max_seen_entries > self.MAX_ALLOWED_SEEN_ENTRIES:
+            raise ValueError(f"max_seen_entries must be <= {self.MAX_ALLOWED_SEEN_ENTRIES}.")
         self.shared_secret = shared_secret
         self.max_skew_seconds = max_skew_seconds
         self.max_requests_per_minute = max_requests_per_minute

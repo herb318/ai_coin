@@ -36,6 +36,7 @@ Verification details:
 - HMAC auth, replay protection, timestamp skew validation, and rate limit are enforced.
 - `request_id` format is validated and enforced as ledger-level network-wide unique (cache eviction cannot bypass).
 - Verified envelope fields are canonicalized (trimmed) before inference/ledger processing.
+- Security runtime config is fail-closed validated (`max_skew_seconds`, `max_requests_per_minute`, `max_seen_entries`).
 
 4. Public transparency:
 - Reward equations and treasury splits are documented.
