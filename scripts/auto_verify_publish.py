@@ -135,6 +135,18 @@ def validate_status_payload_schema(status_payload: Dict[str, Any]) -> Tuple[bool
         tracked_entries = history_chain.get("tracked_entries", 0)
         if not _is_non_negative_int(tracked_entries):
             return False, "Invalid history_chain.tracked_entries: expected non-negative int"
+        legacy_entries = history_chain.get("legacy_entries", 0)
+        if not _is_non_negative_int(legacy_entries):
+            return False, "Invalid history_chain.legacy_entries: expected non-negative int"
+        broken_index = history_chain.get("broken_index", -1)
+        if not isinstance(broken_index, int):
+            return False, "Invalid history_chain.broken_index: expected int"
+        latest_hash = history_chain.get("latest_hash", "")
+        if latest_hash:
+            if not _is_sha256_hex(latest_hash):
+                return False, "Invalid history_chain.latest_hash: expected 64-char sha256 hex"
+        if int(tracked_entries) > 0 and not latest_hash:
+            return False, "Invalid history_chain.latest_hash: required when tracked_entries > 0"
         if "valid" in history_chain and not isinstance(history_chain.get("valid"), bool):
             return False, "Invalid history_chain.valid type: expected bool"
 
@@ -216,11 +228,27 @@ def should_block_publish(
     history_chain = status_payload.get("history_chain", {})
     if isinstance(history_chain, dict):
         tracked_entries = int(history_chain.get("tracked_entries", 0) or 0)
+        legacy_entries = int(history_chain.get("legacy_entries", 0) or 0)
         chain_valid = bool(history_chain.get("valid", True))
+        latest_hash = str(history_chain.get("latest_hash", "") or "")
+        if tracked_entries > 0 and not _is_sha256_hex(latest_hash):
+            return (
+                True,
+                "Generated status reports invalid history chain latest_hash under --production-checks. "
+                f"latest_hash={latest_hash!r}. "
+                "Regenerate/repair history chain before publish.",
+            )
+        if legacy_entries > 0:
+            return (
+                True,
+                "Generated status reports legacy history entries under --production-checks. "
+                f"legacy_entries={legacy_entries}. "
+                "Run status agent to migrate chain before publish.",
+            )
         if tracked_entries > 0 and not chain_valid:
             broken_index = history_chain.get("broken_index", -1)
             broken_reason = str(history_chain.get("broken_reason", "") or "unknown")
-            latest_hash = str(history_chain.get("latest_hash", "") or "-")
+            latest_hash = latest_hash or "-"
             return (
                 True,
                 "Generated status reports invalid history chain integrity under --production-checks. "

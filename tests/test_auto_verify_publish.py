@@ -80,9 +80,10 @@ def _base_status_payload() -> dict:
             "connection_configured": False,
         },
         "top_node_balances": [],
-        "history_chain": {"tracked_entries": 1, "valid": True},
+        "history_chain": {"tracked_entries": 1, "legacy_entries": 0, "valid": True},
     }
     payload["status_fingerprint"] = _status_fingerprint(payload)
+    payload["history_chain"]["latest_hash"] = payload["status_fingerprint"]
     return payload
 
 
@@ -98,6 +99,13 @@ class TestAutoVerifyPublish(unittest.TestCase):
         ok, reason = validate_status_payload_schema(payload)
         self.assertFalse(ok)
         self.assertIn("health_level", reason)
+
+    def test_validate_status_payload_schema_invalid_history_latest_hash(self) -> None:
+        payload = _base_status_payload()
+        payload["history_chain"]["latest_hash"] = "not-a-hash"
+        ok, reason = validate_status_payload_schema(payload)
+        self.assertFalse(ok)
+        self.assertIn("latest_hash", reason)
 
     def test_validate_status_payload_consistency_ok(self) -> None:
         ok, reason = validate_status_payload_consistency(_base_status_payload())
@@ -155,10 +163,11 @@ class TestAutoVerifyPublish(unittest.TestCase):
         payload = _base_status_payload()
         payload["history_chain"] = {
             "tracked_entries": 3,
+            "legacy_entries": 0,
             "valid": False,
             "broken_index": 2,
             "broken_reason": "history_hash verification failed",
-            "latest_hash": "abc",
+            "latest_hash": "a" * 64,
         }
         blocked, reason = should_block_publish(
             status_payload=payload,
@@ -169,6 +178,32 @@ class TestAutoVerifyPublish(unittest.TestCase):
         self.assertTrue(blocked)
         self.assertIn("history chain integrity", reason)
         self.assertIn("broken index", reason.lower())
+
+    def test_should_block_when_history_chain_has_legacy_entries(self) -> None:
+        payload = _base_status_payload()
+        payload["history_chain"]["tracked_entries"] = 4
+        payload["history_chain"]["legacy_entries"] = 2
+        blocked, reason = should_block_publish(
+            status_payload=payload,
+            production_checks=True,
+            allow_failing_status=False,
+            now_utc=datetime(2026, 2, 24, 15, 0, 30, tzinfo=timezone.utc),
+        )
+        self.assertTrue(blocked)
+        self.assertIn("legacy history entries", reason)
+
+    def test_should_block_when_history_latest_hash_invalid(self) -> None:
+        payload = _base_status_payload()
+        payload["history_chain"]["tracked_entries"] = 3
+        payload["history_chain"]["latest_hash"] = "123"
+        blocked, reason = should_block_publish(
+            status_payload=payload,
+            production_checks=True,
+            allow_failing_status=False,
+            now_utc=datetime(2026, 2, 24, 15, 0, 30, tzinfo=timezone.utc),
+        )
+        self.assertTrue(blocked)
+        self.assertIn("latest_hash", reason)
 
     def test_should_block_when_schema_invalid(self) -> None:
         payload = _base_status_payload()
@@ -205,7 +240,7 @@ class TestAutoVerifyPublish(unittest.TestCase):
 
     def test_should_not_block_invalid_history_when_allow_failing(self) -> None:
         payload = _base_status_payload()
-        payload["history_chain"] = {"tracked_entries": 2, "valid": False}
+        payload["history_chain"] = {"tracked_entries": 2, "legacy_entries": 0, "valid": False, "latest_hash": "a" * 64}
         blocked, reason = should_block_publish(
             status_payload=payload,
             production_checks=True,

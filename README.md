@@ -186,7 +186,7 @@ Behavior:
 - With `--production-checks`, auto publish validates status payload schema (mode/protocol/health/metrics/fingerprint/history metadata).
 - With `--production-checks`, auto publish verifies payload consistency (health/status relation + recomputed `status_fingerprint` match).
 - With `--production-checks`, auto publish aborts if `status_ok=false`.
-- With `--production-checks`, auto publish also aborts if `history_chain.valid=false`.
+- With `--production-checks`, auto publish also aborts if `history_chain.valid=false`, `history_chain.latest_hash` is invalid, or `history_chain.legacy_entries>0`.
 - With `--production-checks`, auto publish aborts if `generated_at_utc` is invalid/missing or older than `--max-status-age-seconds` (default `900`).
 - Optional strict mode: add `--fail-on-warn` to block when `health_level=WARN`.
 - Use `--allow-failing-status` only when you explicitly want to publish degraded status.
