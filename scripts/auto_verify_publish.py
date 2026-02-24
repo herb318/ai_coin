@@ -53,6 +53,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Commit changes but skip git push.",
     )
+    parser.add_argument(
+        "--allow-failing-status",
+        action="store_true",
+        help="Allow commit/push even if generated status is degraded.",
+    )
     return parser.parse_args()
 
 
@@ -70,6 +75,18 @@ def main() -> None:
     if args.production_checks:
         status_cmd.append("--production-checks")
     run(status_cmd, cwd=repo)
+    status_json_path = repo / "docs" / "NETWORK_STATUS.json"
+    with open(status_json_path, "r", encoding="utf-8") as handle:
+        status_payload = json.load(handle)
+
+    if args.production_checks and not args.allow_failing_status and not status_payload.get("status_ok", False):
+        reasons = status_payload.get("status_reasons", [])
+        reason_text = ", ".join(str(reason) for reason in reasons) if reasons else "unknown reason"
+        raise RuntimeError(
+            "Generated status is degraded under --production-checks. "
+            f"Reasons: {reason_text}. "
+            "Fix environment/security checks or pass --allow-failing-status."
+        )
 
     changed = run(
         ["git", "status", "--porcelain", "--", "docs/NETWORK_STATUS.md", "docs/NETWORK_STATUS.json"],

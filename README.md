@@ -137,6 +137,11 @@ Outputs:
 GitHub view entrypoint:
 - `docs/NETWORK_STATUS.md`
 
+Health fields in JSON:
+- `status_ok`: overall health flag
+- `status_reasons`: machine-readable degraded reasons
+- `launch_error` / `qa_error`: failure details when degraded
+
 ## Full Auto Verification + Publish
 
 Run all checks and automatically commit/push status docs if changed:
@@ -144,6 +149,10 @@ Run all checks and automatically commit/push status docs if changed:
 ```bash
 python3 scripts/auto_verify_publish.py --production-checks
 ```
+
+Behavior:
+- With `--production-checks`, auto publish aborts if `status_ok=false`.
+- Use `--allow-failing-status` only when you explicitly want to publish degraded status.
 
 ## License
 

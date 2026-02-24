@@ -28,8 +28,8 @@ PROTOCOL_NAME = "Distributed Proof-of-Useful-Inference Network"
 PROTOCOL_ID = "dpuin-protocol"
 
 
-def _safe_decimal_str(value: Any) -> str:
-    return str(value)
+def _failed_preflight_reasons(checks: Dict[str, bool]) -> List[str]:
+    return [name for name, passed in checks.items() if not passed]
 
 
 def _top_node_balances(snapshot: Dict[str, Any], limit: int = 5) -> List[tuple[str, Any]]:
@@ -39,15 +39,42 @@ def _top_node_balances(snapshot: Dict[str, Any], limit: int = 5) -> List[tuple[s
     return node_items[:limit]
 
 
+def _safe_run_qa_suite(production_checks: bool) -> Dict[str, Any]:
+    try:
+        qa = run_qa_team_suite(production_mode=production_checks)
+        return {
+            "overall_passed": bool(qa.get("overall_passed", False)),
+            "agent_count": len(qa.get("agents", [])),
+            "error": "",
+        }
+    except Exception as exc:
+        return {
+            "overall_passed": False,
+            "agent_count": 0,
+            "error": str(exc),
+        }
+
+
 def build_status_payload(production_checks: bool, launch_state_path: str) -> Dict[str, Any]:
     identities = IdentityRegistry.from_env()
     network = TranslationNetwork()
     checks = network.run_preflight_checks(security_scan_passed=True, production_mode=production_checks)
-    network.open_mainnet()
+    status_reasons: List[str] = []
+    launch_error = ""
+    outputs: List[Dict[str, Any]] = []
 
-    outputs = []
-    for envelope in network.build_demo_requests():
-        outputs.append(network.process_request(envelope))
+    if all(checks.values()):
+        try:
+            network.open_mainnet()
+            for envelope in network.build_demo_requests():
+                outputs.append(network.process_request(envelope))
+        except Exception as exc:
+            launch_error = str(exc)
+            status_reasons.append("open_mainnet_failed")
+    else:
+        blocked = _failed_preflight_reasons(checks)
+        status_reasons.extend([f"preflight:{name}" for name in blocked])
+        launch_error = f"Launch blocked. Unmet checks: {', '.join(blocked)}"
 
     snapshot = to_jsonable(network.state_snapshot())
 
@@ -57,22 +84,32 @@ def build_status_payload(production_checks: bool, launch_state_path: str) -> Dic
     )
     launch_state = sentinel.snapshot()
 
-    qa = run_qa_team_suite(production_mode=production_checks)
+    qa = _safe_run_qa_suite(production_checks=production_checks)
     avg_latency = 0.0
     if outputs:
         avg_latency = sum(float(item["winner_latency_ms"]) for item in outputs) / len(outputs)
+    if not qa["overall_passed"]:
+        status_reasons.append("qa_failed")
+        if qa["error"]:
+            status_reasons.append("qa_execution_error")
+    status_ok = not status_reasons
 
     payload = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "mode": "network-status-agent",
         "protocol_name": PROTOCOL_NAME,
         "protocol_id": PROTOCOL_ID,
+        "status_ok": status_ok,
+        "status_reasons": status_reasons,
+        "launch_error": launch_error,
+        "qa_error": qa["error"],
         "production_checks": production_checks,
         "network_size_nodes": len(network.nodes),
         "avg_winner_latency_ms": round(avg_latency, 2),
+        "requests_executed": len(outputs),
         "preflight_checks": checks,
         "qa_overall_passed": qa["overall_passed"],
-        "qa_agent_count": len(qa["agents"]),
+        "qa_agent_count": qa["agent_count"],
         "launch_state": launch_state,
         "snapshot": snapshot,
         "top_node_balances": _top_node_balances(snapshot, limit=5),
@@ -85,12 +122,18 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     launch_state = payload["launch_state"]
     top_nodes = payload["top_node_balances"]
     checks = payload["preflight_checks"]
+    status_reasons = payload.get("status_reasons", [])
+    launch_error = payload.get("launch_error", "")
+    qa_error = payload.get("qa_error", "")
     checks_lines = "\n".join(
         f"- `{k}`: `{v}`" for k, v in checks.items()
     )
     top_node_lines = "\n".join(
         f"- `{node}`: `{balance}`" for node, balance in top_nodes
     ) or "- none"
+    status_reason_lines = "\n".join(f"- `{reason}`" for reason in status_reasons) or "- none"
+    health = "OK" if payload.get("status_ok") else "DEGRADED"
+    balances = snapshot.get("balances", {})
 
     return f"""# DPUIN Network Status
 
@@ -99,10 +142,21 @@ Generated at: `{payload['generated_at_utc']}`
 ## Summary
 
 - Protocol: `{payload['protocol_name']}` (`{payload['protocol_id']}`)
+- Health: `{health}`
 - Network nodes: `{payload['network_size_nodes']}`
 - QA overall: `{payload['qa_overall_passed']}` (`{payload['qa_agent_count']}` agents)
 - Avg winner latency: `{payload['avg_winner_latency_ms']} ms`
 - Production checks mode: `{payload['production_checks']}`
+- Requests executed: `{payload.get('requests_executed')}`
+
+## Status Reasons
+
+{status_reason_lines}
+
+## Errors
+
+- Launch error: `{launch_error or '-'}`
+- QA error: `{qa_error or '-'}`
 
 ## Launch State
 
@@ -130,10 +184,10 @@ Generated at: `{payload['generated_at_utc']}`
 
 ## Treasury Balances
 
-- Founder treasury: `{snapshot['balances'].get('founder_treasury')}`
-- Ecosystem treasury: `{snapshot['balances'].get('ecosystem_treasury')}`
-- Security treasury: `{snapshot['balances'].get('security_treasury')}`
-- Community treasury: `{snapshot['balances'].get('community_treasury')}`
+- Founder treasury: `{balances.get('founder_treasury')}`
+- Ecosystem treasury: `{balances.get('ecosystem_treasury')}`
+- Security treasury: `{balances.get('security_treasury')}`
+- Community treasury: `{balances.get('community_treasury')}`
 
 ## Top Node Balances
 

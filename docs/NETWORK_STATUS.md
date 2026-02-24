@@ -1,14 +1,25 @@
 # DPUIN Network Status
 
-Generated at: `2026-02-24T14:26:34.748985+00:00`
+Generated at: `2026-02-24T14:30:53.386011+00:00`
 
 ## Summary
 
 - Protocol: `Distributed Proof-of-Useful-Inference Network` (`dpuin-protocol`)
+- Health: `OK`
 - Network nodes: `5`
 - QA overall: `True` (`5` agents)
 - Avg winner latency: `45.6 ms`
 - Production checks mode: `False`
+- Requests executed: `5`
+
+## Status Reasons
+
+- none
+
+## Errors
+
+- Launch error: `-`
+- QA error: `-`
 
 ## Launch State
 
