@@ -1169,6 +1169,44 @@ class SecurityQAAgent(QAAgent):
             duplicate_request_blocked = "duplicate request_id" in str(exc)
             duplicate_request_reason = str(exc)
 
+        stale_timestamp = net.security.build_envelope(
+            "qa-security-stale-ts",
+            "node-sea-1",
+            "질문이 있으면 언제든지 말씀해 주세요.",
+        )
+        stale_timestamp["timestamp"] = now_ts() - (net.security.max_skew_seconds + 10)
+        resign(stale_timestamp)
+        stale_timestamp_blocked = False
+        stale_timestamp_reason = ""
+        try:
+            net.process_request(stale_timestamp)
+        except ValueError as exc:
+            stale_timestamp_blocked = "timestamp outside allowed clock skew" in str(exc)
+            stale_timestamp_reason = str(exc)
+
+        rate_limit_net = self.network_factory()
+        max_per_minute = rate_limit_net.security.max_requests_per_minute
+        for idx in range(max_per_minute):
+            env = rate_limit_net.security.build_envelope(
+                f"qa-security-rate-ok-{idx}",
+                "node-sea-1",
+                "안녕하세요, 회의에 참석해 주셔서 감사합니다.",
+            )
+            rate_limit_net.process_request(env)
+
+        rate_limit_env = rate_limit_net.security.build_envelope(
+            "qa-security-rate-block",
+            "node-sea-1",
+            "안녕하세요, 회의에 참석해 주셔서 감사합니다.",
+        )
+        rate_limit_blocked = False
+        rate_limit_reason = ""
+        try:
+            rate_limit_net.process_request(rate_limit_env)
+        except ValueError as exc:
+            rate_limit_blocked = "rate limit exceeded" in str(exc)
+            rate_limit_reason = str(exc)
+
         passed = (
             replay_blocked
             and signature_blocked
@@ -1176,11 +1214,13 @@ class SecurityQAAgent(QAAgent):
             and nonce_blocked
             and oversized_blocked
             and duplicate_request_blocked
+            and stale_timestamp_blocked
+            and rate_limit_blocked
         )
         return QAAgentResult(
             agent_id=self.agent_id,
             passed=passed,
-            summary="Replay, signature tampering, malformed payloads, and unknown nodes must be rejected.",
+            summary="Replay/tampering/stale timestamp/rate abuse must be rejected by network security controls.",
             evidence={
                 "replay_blocked": replay_blocked,
                 "replay_reason": replay_reason,
@@ -1194,6 +1234,10 @@ class SecurityQAAgent(QAAgent):
                 "oversized_reason": oversized_reason,
                 "duplicate_request_blocked": duplicate_request_blocked,
                 "duplicate_request_reason": duplicate_request_reason,
+                "stale_timestamp_blocked": stale_timestamp_blocked,
+                "stale_timestamp_reason": stale_timestamp_reason,
+                "rate_limit_blocked": rate_limit_blocked,
+                "rate_limit_reason": rate_limit_reason,
                 "slash_points": dict(net.slash_points),
             },
         )

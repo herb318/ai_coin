@@ -7,6 +7,7 @@ from decentralized_ai_network_demo import (
     IdentityRegistry,
     TranslationNetwork,
     UnstoppableLaunchSentinel,
+    now_ts,
     run_qa_team_suite,
 )
 
@@ -192,6 +193,46 @@ class TestSecurity(unittest.TestCase):
         net.process_request(first)
         with self.assertRaisesRegex(ValueError, "duplicate request_id"):
             net.process_request(second)
+
+    def test_stale_timestamp_is_blocked(self) -> None:
+        net = TranslationNetwork()
+        net.run_preflight_checks(security_scan_passed=True, production_mode=False)
+        net.open_mainnet()
+
+        env = net.security.build_envelope("stale-timestamp", "node-sea-1", "질문이 있으면 언제든지 말씀해 주세요.")
+        env["timestamp"] = now_ts() - (net.security.max_skew_seconds + 5)
+        env["signature"] = net.security.sign(
+            {
+                "request_id": env["request_id"],
+                "node_id": env["node_id"],
+                "source_text": env["source_text"],
+                "nonce": env["nonce"],
+                "timestamp": env["timestamp"],
+            }
+        )
+        with self.assertRaisesRegex(ValueError, "timestamp outside allowed clock skew"):
+            net.process_request(env)
+
+    def test_rate_limit_is_enforced(self) -> None:
+        net = TranslationNetwork()
+        net.run_preflight_checks(security_scan_passed=True, production_mode=False)
+        net.open_mainnet()
+
+        for idx in range(net.security.max_requests_per_minute):
+            env = net.security.build_envelope(
+                f"rate-ok-{idx}",
+                "node-sea-1",
+                "안녕하세요, 회의에 참석해 주셔서 감사합니다.",
+            )
+            net.process_request(env)
+
+        overflow = net.security.build_envelope(
+            "rate-overflow",
+            "node-sea-1",
+            "안녕하세요, 회의에 참석해 주셔서 감사합니다.",
+        )
+        with self.assertRaisesRegex(ValueError, "rate limit exceeded"):
+            net.process_request(overflow)
 
 
 class TestQATeam(unittest.TestCase):

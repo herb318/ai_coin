@@ -33,7 +33,7 @@ Verification details:
 
 3. Safety first:
 - Mainnet cannot open until mandatory preflight checks pass.
-- HMAC auth, replay protection, and rate limit are enforced.
+- HMAC auth, replay protection, timestamp skew validation, and rate limit are enforced.
 
 4. Public transparency:
 - Reward equations and treasury splits are documented.
