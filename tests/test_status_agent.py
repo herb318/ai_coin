@@ -43,6 +43,16 @@ class TestStatusAgent(unittest.TestCase):
         self.assertGreater(payload["requests_executed"], 0)
         self.assertEqual(payload["launch_error"], "")
         self.assertEqual(payload["qa_error"], "")
+        self.assertEqual(len(payload["node_details"]), 5)
+        self.assertEqual(len(payload["recent_requests"]), 5)
+        first_node = payload["node_details"][0]
+        self.assertIn("node_id", first_node)
+        self.assertIn("share_of_node_balance_pct", first_node)
+        self.assertIn("wallet_preview", first_node)
+        first_request = payload["recent_requests"][0]
+        self.assertIn("request_id", first_request)
+        self.assertIn("winner_node", first_request)
+        self.assertIn("node_rewards", first_request)
 
     def test_production_payload_is_degraded_without_required_env(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

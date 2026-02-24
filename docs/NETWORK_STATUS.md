@@ -1,6 +1,6 @@
 # DPUIN Network Status
 
-Generated at: `2026-02-24T14:47:48.648006+00:00`
+Generated at: `2026-02-24T16:19:44.805010+00:00`
 
 ## Summary
 
@@ -11,6 +11,13 @@ Generated at: `2026-02-24T14:47:48.648006+00:00`
 - Avg winner latency: `45.6 ms`
 - Production checks mode: `False`
 - Requests executed: `5`
+
+## Friendly Overview
+
+- Current operator view: health=`WARN`, status_ok=`True`
+- Mainnet state: `open=True`, `epoch=5`, `model=llm-shard-v1.0`
+- Performance: average winner latency `45.6 ms`
+- Participation: `5` nodes, `5` processed requests in this snapshot
 
 ## Status Reasons
 
@@ -45,33 +52,33 @@ Generated at: `2026-02-24T14:47:48.648006+00:00`
 ## Recent History
 
 - History file: `docs/NETWORK_HISTORY.jsonl`
-- Total history entries: `6`
+- Total history entries: `9`
 - History appended this run: `True`
 - History append blocked: `False`
-- History chain repaired: `True`
-- Status fingerprint: `9eab5526ffa1dc26cf54b100a49c09e9a1666ec3815b0ac4eba2aadd6688c7e5`
+- History chain repaired: `False`
+- Status fingerprint: `c93cc023f8275a8b4d9a4c19ea29e18c587a30a728337761d7580badc5fc5bb4`
 
-- `2026-02-24T14:42:41.422634+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
-- `2026-02-24T14:44:56.308758+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
 - `2026-02-24T14:47:48.648006+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
 - `2026-02-24T14:47:48.648006+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
-- `2026-02-24T14:47:48.648006+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
+- `2026-02-24T16:11:44.386346+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
+- `2026-02-24T16:12:56.837807+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
+- `2026-02-24T16:19:44.805010+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
 
 ## History Integrity
 
 - Chain enabled: `True`
 - Chain valid: `True`
-- Tracked entries: `6`
+- Tracked entries: `9`
 - Legacy entries: `0`
-- Latest chain hash: `ee1ff29be220d0c69c53cdae70803f8b5272afdf6c543900c491eb87b96866f7`
+- Latest chain hash: `b3e4671f9c5344e1a30de61edeebc1a43c4590e978084ad5f423035f41bc82b4`
 - Broken index: `-1`
 - Broken reason: `-`
 
 ## History Trend
 
 - Window size: `20`
-- Sample size: `6`
-- Health counts: `OK=0, WARN=6, DEGRADED=0`
+- Sample size: `9`
+- Health counts: `OK=0, WARN=9, DEGRADED=0`
 - Latest health: `WARN`
 - Previous health: `WARN`
 - Health changed: `False`
@@ -84,8 +91,8 @@ Generated at: `2026-02-24T14:47:48.648006+00:00`
 - Unstoppable started: `False`
 - Successful open: `False`
 - Started by: ``
-- Last runner: ``
-- Total runs: `0`
+- Last runner: `runner-unknown`
+- Total runs: `18`
 - Start attempts: `0`
 
 ## Preflight Checks
@@ -121,6 +128,24 @@ Generated at: `2026-02-24T14:47:48.648006+00:00`
 - `node-sgp-3`: `1164.6489`
 - `node-fra-4`: `998.1850`
 - `node-iad-5`: `925.3624`
+
+## Node Details (All)
+
+| Rank | Node | Balance | Share of Node Pool | Slash Points | Wallet Preview |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `node-sea-1` | `1294.3515` | `23.242%` | `0` | `dev_cd...63b8` |
+| 2 | `node-tyo-2` | `1186.4828` | `21.305%` | `0` | `dev_e5...ee1c` |
+| 3 | `node-sgp-3` | `1164.6489` | `20.913%` | `0` | `dev_bc...2a38` |
+| 4 | `node-fra-4` | `998.1850` | `17.9239%` | `0` | `dev_df...f6a6` |
+| 5 | `node-iad-5` | `925.3624` | `16.6162%` | `0` | `dev_43...a738` |
+
+## Request Details (Latest Run)
+
+- `req-001` | requester=`node-sea-1` | winner=`node-sea-1` | latency=`43 ms` | emission=`1500` | output=`Hello, thank you for joining the meeting.`
+- `req-002` | requester=`node-tyo-2` | winner=`node-sea-1` | latency=`41 ms` | emission=`1492.500` | output=`Today's agenda is a real-time translation network demo.`
+- `req-003` | requester=`node-sgp-3` | winner=`node-sea-1` | latency=`48 ms` | emission=`1485.037500` | output=`Please ask any questions at any time.`
+- `req-004` | requester=`node-fra-4` | winner=`node-sea-1` | latency=`43 ms` | emission=`1477.612312500` | output=`This network requires security validation before launch.`
+- `req-005` | requester=`node-iad-5` | winner=`node-sea-1` | latency=`53 ms` | emission=`1470.224250937500` | output=`We validate latency and quality at the same time.`
 
 ---
 

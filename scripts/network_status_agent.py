@@ -40,6 +40,49 @@ def _top_node_balances(snapshot: Dict[str, Any], limit: int = 5) -> List[tuple[s
     return node_items[:limit]
 
 
+def _node_details(snapshot: Dict[str, Any]) -> List[Dict[str, Any]]:
+    balances = snapshot.get("balances", {})
+    wallet_preview = snapshot.get("wallets_redacted", {})
+    slash_points = snapshot.get("slash_points", {})
+    node_items = [(k, v) for k, v in balances.items() if k.startswith("node-")]
+    node_items.sort(key=lambda kv: float(kv[1]), reverse=True)
+    total_node_balance = sum(float(balance) for _, balance in node_items)
+    details: List[Dict[str, Any]] = []
+    for rank, (node_id, balance) in enumerate(node_items, start=1):
+        share = 0.0
+        if total_node_balance > 0:
+            share = round((float(balance) / total_node_balance) * 100.0, 4)
+        details.append(
+            {
+                "rank": rank,
+                "node_id": node_id,
+                "balance": balance,
+                "share_of_node_balance_pct": share,
+                "wallet_preview": wallet_preview.get(node_id, ""),
+                "slash_points": int(slash_points.get(node_id, 0)),
+            }
+        )
+    return details
+
+
+def _request_details(outputs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    details: List[Dict[str, Any]] = []
+    for item in outputs:
+        details.append(
+            {
+                "request_id": item.get("request_id"),
+                "requester_node": item.get("requester_node"),
+                "winner_node": item.get("winner_node"),
+                "winner_latency_ms": item.get("winner_latency_ms"),
+                "final_output": item.get("final_output"),
+                "emission": item.get("emission"),
+                "node_rewards": item.get("node_rewards", {}),
+                "applied_upgrades": item.get("applied_upgrades", []),
+            }
+        )
+    return details
+
+
 def _safe_run_qa_suite(production_checks: bool) -> Dict[str, Any]:
     try:
         qa = run_qa_team_suite(production_mode=production_checks)
@@ -125,6 +168,8 @@ def _status_fingerprint(payload: Dict[str, Any]) -> str:
         "launch_state": payload.get("launch_state"),
         "snapshot": payload.get("snapshot"),
         "top_node_balances": payload.get("top_node_balances"),
+        "node_details": payload.get("node_details"),
+        "recent_requests": payload.get("recent_requests"),
     }
     encoded = json.dumps(to_jsonable(basis), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
@@ -465,6 +510,8 @@ def build_status_payload(production_checks: bool, launch_state_path: str) -> Dic
         "launch_state": launch_state,
         "snapshot": snapshot,
         "top_node_balances": _top_node_balances(snapshot, limit=5),
+        "node_details": _node_details(snapshot),
+        "recent_requests": _request_details(outputs),
     }
     return payload
 
@@ -473,6 +520,8 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     snapshot = payload["snapshot"]
     launch_state = payload["launch_state"]
     top_nodes = payload["top_node_balances"]
+    node_details = payload.get("node_details", [])
+    recent_requests = payload.get("recent_requests", [])
     checks = payload["preflight_checks"]
     prod_readiness = payload.get("production_readiness", {"ready": False, "checks": {}})
     prod_checks = prod_readiness.get("checks", {})
@@ -495,6 +544,17 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     )
     top_node_lines = "\n".join(
         f"- `{node}`: `{balance}`" for node, balance in top_nodes
+    ) or "- none"
+    node_table_lines = "\n".join(
+        f"| {item.get('rank')} | `{item.get('node_id')}` | `{item.get('balance')}` | "
+        f"`{item.get('share_of_node_balance_pct')}%` | `{item.get('slash_points')}` | `{item.get('wallet_preview')}` |"
+        for item in node_details
+    ) or "| - | - | - | - | - | - |"
+    request_lines = "\n".join(
+        f"- `{item.get('request_id')}` | requester=`{item.get('requester_node')}` | "
+        f"winner=`{item.get('winner_node')}` | latency=`{item.get('winner_latency_ms')} ms` | "
+        f"emission=`{item.get('emission')}` | output=`{item.get('final_output')}`"
+        for item in recent_requests
     ) or "- none"
     status_reason_lines = "\n".join(f"- `{reason}`" for reason in status_reasons) or "- none"
     advisory_lines = "\n".join(f"- `{advisory}`" for advisory in advisories) or "- none"
@@ -523,6 +583,13 @@ Generated at: `{payload['generated_at_utc']}`
 - Avg winner latency: `{payload['avg_winner_latency_ms']} ms`
 - Production checks mode: `{payload['production_checks']}`
 - Requests executed: `{payload.get('requests_executed')}`
+
+## Friendly Overview
+
+- Current operator view: health=`{health}`, status_ok=`{payload.get('status_ok')}`
+- Mainnet state: `open={snapshot.get('mainnet_open')}`, `epoch={snapshot.get('epoch')}`, `model={snapshot.get('model_version')}`
+- Performance: average winner latency `{payload['avg_winner_latency_ms']} ms`
+- Participation: `{payload['network_size_nodes']}` nodes, `{payload.get('requests_executed')}` processed requests in this snapshot
 
 ## Status Reasons
 
@@ -615,6 +682,16 @@ Generated at: `{payload['generated_at_utc']}`
 ## Top Node Balances
 
 {top_node_lines}
+
+## Node Details (All)
+
+| Rank | Node | Balance | Share of Node Pool | Slash Points | Wallet Preview |
+| --- | --- | --- | --- | --- | --- |
+{node_table_lines}
+
+## Request Details (Latest Run)
+
+{request_lines}
 
 ---
 

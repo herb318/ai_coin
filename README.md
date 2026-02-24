@@ -211,6 +211,8 @@ Health fields in JSON:
 - `history_appended`: whether a new history record was appended this run
 - `history_append_blocked`: true when chain corruption blocks new append
 - `history_chain_repaired`: true when legacy history gets auto-migrated/repaired into a valid chain
+- `node_details`: per-node rank/balance/share/slash points/wallet preview
+- `recent_requests`: request-by-request winner/latency/emission/output summary from latest run
 
 Advanced status-agent options:
 - `--no-history-dedupe`: append history even when fingerprint is unchanged
