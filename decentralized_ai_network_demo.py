@@ -15,8 +15,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
+import re
 import secrets
 import time
 from collections import defaultdict, deque
@@ -25,6 +27,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, getcontext
 from difflib import SequenceMatcher
 from typing import Any, Callable, Deque, Dict, List, Optional, Set
+from urllib.parse import urlparse
 
 getcontext().prec = 28
 
@@ -47,6 +50,9 @@ REQUIRED_CONNECTION_ENV = ["PRIVATE_RPC_URL", "PRIVATE_API_TOKEN"]
 DEFAULT_OWNER_ID = "owner-dev-local"
 DEFAULT_RUNNER_ID = "runner-unknown"
 DEFAULT_LAUNCH_STATE_PATH = "runtime/launch_state.json"
+OWNER_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{5,63}$")
+WALLET_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$")
+HEX_CHARS = set("0123456789abcdef")
 
 
 def now_ts() -> int:
@@ -202,23 +208,96 @@ class IdentityRegistry:
     def has_unique_wallets(self) -> bool:
         return len(set(self.wallets.values())) == len(self.wallets)
 
+    @staticmethod
+    def _normalize_placeholder_text(value: str) -> str:
+        return "".join(ch for ch in value.lower().strip() if ch.isalnum())
+
     def _looks_placeholder(self, value: str) -> bool:
-        lowered = value.lower()
-        placeholders = ["dev_", "example", "changeme", "placeholder", "your_"]
-        return any(token in lowered for token in placeholders)
+        lowered = value.lower().strip()
+        if not lowered:
+            return True
+        if lowered.startswith("dev_"):
+            return True
+        normalized = self._normalize_placeholder_text(lowered)
+        markers = [
+            "changeme",
+            "placeholder",
+            "example",
+            "dummy",
+            "sample",
+            "replace",
+            "your",
+            "default",
+            "testvalue",
+        ]
+        return any(marker in normalized for marker in markers)
+
+    def _valid_rpc_url(self, value: str) -> bool:
+        candidate = value.strip()
+        if self._looks_placeholder(candidate):
+            return False
+        parsed = urlparse(candidate)
+        if parsed.scheme not in {"https", "wss"}:
+            return False
+        if not parsed.hostname:
+            return False
+        if parsed.username or parsed.password:
+            return False
+        host = parsed.hostname
+        if host == "localhost":
+            return False
+        try:
+            address = ipaddress.ip_address(host)
+        except ValueError:
+            return True
+        return not (address.is_loopback or address.is_multicast or address.is_unspecified)
+
+    def _valid_api_token(self, value: str) -> bool:
+        token = value.strip()
+        if self._looks_placeholder(token):
+            return False
+        if len(token) < 24:
+            return False
+        if any(ch.isspace() for ch in token):
+            return False
+        char_classes = [
+            any(ch.islower() for ch in token),
+            any(ch.isupper() for ch in token),
+            any(ch.isdigit() for ch in token),
+            any(not ch.isalnum() for ch in token),
+        ]
+        return sum(char_classes) >= 3
+
+    def _valid_owner_id(self, value: str) -> bool:
+        owner_id = value.strip()
+        if self._looks_placeholder(owner_id):
+            return False
+        return bool(OWNER_ID_PATTERN.fullmatch(owner_id))
+
+    def _valid_wallet(self, value: str) -> bool:
+        wallet = value.strip()
+        if self._looks_placeholder(wallet):
+            return False
+        if any(ch.isspace() for ch in wallet):
+            return False
+        return bool(WALLET_PATTERN.fullmatch(wallet))
 
     def production_ready(self) -> bool:
         if self.owner_id == DEFAULT_OWNER_ID:
+            return False
+        if not self._valid_owner_id(self.owner_id):
             return False
         if self.missing_wallet_env or self.missing_connection_env:
             return False
         if not self.has_unique_wallets():
             return False
-        if any(self._looks_placeholder(wallet) for wallet in self.wallets.values()):
+        if any(not self._valid_wallet(wallet) for wallet in self.wallets.values()):
             return False
-        if not self.connection_info.get("PRIVATE_RPC_URL"):
+        rpc_url = self.connection_info.get("PRIVATE_RPC_URL", "")
+        if not self._valid_rpc_url(rpc_url):
             return False
-        if not self.connection_info.get("PRIVATE_API_TOKEN"):
+        api_token = self.connection_info.get("PRIVATE_API_TOKEN", "")
+        if not self._valid_api_token(api_token):
             return False
         return True
 
@@ -279,9 +358,15 @@ class UnstoppableLaunchSentinel:
             self._save(state)
             return state
 
-        stored_owner = str(raw.get("owner_id") or owner_id)
+        stored_owner = str(raw.get("owner_id") or owner_id).strip() or owner_id
+        if stored_owner != owner_id:
+            # Fail closed on ownership mismatch so stale/tampered state cannot hijack control.
+            state = self._default_state(owner_id)
+            self._save(state)
+            return state
+
         state = UnstoppableLaunchState(
-            owner_id=stored_owner,
+            owner_id=owner_id,
             armed=bool(raw.get("armed", False)),
             unstoppable_started=bool(raw.get("unstoppable_started", False)),
             successful_open=bool(raw.get("successful_open", False)),
@@ -289,8 +374,8 @@ class UnstoppableLaunchSentinel:
             started_at_utc=str(raw.get("started_at_utc", "")),
             last_runner_id=str(raw.get("last_runner_id", "")),
             last_run_at_utc=str(raw.get("last_run_at_utc", "")),
-            total_runs=int(raw.get("total_runs", 0)),
-            start_attempts=int(raw.get("start_attempts", 0)),
+            total_runs=max(0, int(raw.get("total_runs", 0))),
+            start_attempts=max(0, int(raw.get("start_attempts", 0))),
         )
         self._save(state)
         return state
@@ -545,13 +630,30 @@ class UpgradeProposal:
 
 
 class RequestSecurity:
-    def __init__(self, shared_secret: bytes, max_skew_seconds: int = 120, max_requests_per_minute: int = 60) -> None:
+    REQUEST_ID_MAX_CHARS = 128
+    SOURCE_TEXT_MAX_CHARS = 4096
+    NONCE_HEX_LEN = 32
+    SIGNATURE_HEX_LEN = 64
+
+    def __init__(
+        self,
+        shared_secret: bytes,
+        max_skew_seconds: int = 120,
+        max_requests_per_minute: int = 60,
+        allowed_nodes: Optional[Set[str]] = None,
+        max_seen_entries: int = 20000,
+    ) -> None:
         if len(shared_secret) < 32:
             raise ValueError("Shared secret must be at least 32 bytes.")
         self.shared_secret = shared_secret
         self.max_skew_seconds = max_skew_seconds
         self.max_requests_per_minute = max_requests_per_minute
+        self.allowed_nodes = set(allowed_nodes or set())
+        self.max_seen_entries = max_seen_entries
         self.used_nonces: Dict[str, int] = {}
+        self.used_request_ids: Dict[str, int] = {}
+        self.nonce_seen_order: Deque[tuple[str, int]] = deque()
+        self.request_seen_order: Deque[tuple[str, int]] = deque()
         self.node_request_times: Dict[str, Deque[int]] = defaultdict(deque)
 
     def sign(self, payload: Dict[str, Any]) -> str:
@@ -576,41 +678,109 @@ class RequestSecurity:
             if key not in envelope:
                 return False, f"missing field: {key}"
 
+        request_id = envelope["request_id"]
+        if not isinstance(request_id, str):
+            return False, "invalid request_id type"
+        request_id = request_id.strip()
+        if not request_id or len(request_id) > self.REQUEST_ID_MAX_CHARS:
+            return False, "invalid request_id"
+
+        node_id = envelope["node_id"]
+        if not isinstance(node_id, str):
+            return False, "invalid node_id type"
+        node_id = node_id.strip()
+        if not node_id:
+            return False, "invalid node_id"
+        if self.allowed_nodes and node_id not in self.allowed_nodes:
+            return False, "unknown node_id"
+
+        source_text = envelope["source_text"]
+        if not isinstance(source_text, str):
+            return False, "invalid source_text type"
+        source_text = source_text.strip()
+        if not source_text:
+            return False, "empty source_text"
+        if len(source_text) > self.SOURCE_TEXT_MAX_CHARS:
+            return False, "source_text too large"
+
+        nonce = envelope["nonce"]
+        if not isinstance(nonce, str):
+            return False, "invalid nonce type"
+        nonce = nonce.strip().lower()
+        if not self._is_hex_string(nonce, expected_len=self.NONCE_HEX_LEN):
+            return False, "invalid nonce"
+
+        provided = envelope["signature"]
+        if not isinstance(provided, str):
+            return False, "invalid signature type"
+        provided = provided.strip().lower()
+        if not self._is_hex_string(provided, expected_len=self.SIGNATURE_HEX_LEN):
+            return False, "invalid signature format"
+
         try:
             timestamp = int(envelope["timestamp"])
         except (TypeError, ValueError):
+            return False, "invalid timestamp"
+        if timestamp <= 0:
             return False, "invalid timestamp"
 
         if abs(now - timestamp) > self.max_skew_seconds:
             return False, "timestamp outside allowed clock skew"
 
-        nonce_key = f"{envelope['node_id']}:{envelope['nonce']}"
-        self._cleanup_nonces(now)
-        if nonce_key in self.used_nonces:
-            return False, "replay detected (nonce reused)"
-        self.used_nonces[nonce_key] = now
-
-        if not self._allow_rate(envelope["node_id"], now):
-            return False, "rate limit exceeded"
-
         signed_payload = {
-            "request_id": envelope["request_id"],
-            "node_id": envelope["node_id"],
-            "source_text": envelope["source_text"],
-            "nonce": envelope["nonce"],
-            "timestamp": envelope["timestamp"],
+            "request_id": request_id,
+            "node_id": node_id,
+            "source_text": source_text,
+            "nonce": nonce,
+            "timestamp": timestamp,
         }
         expected = self.sign(signed_payload)
-        provided = str(envelope["signature"])
         if not hmac.compare_digest(expected, provided):
             return False, "signature verification failed"
+
+        self._cleanup_seen_entries(now)
+        nonce_key = f"{node_id}:{nonce}"
+        if nonce_key in self.used_nonces:
+            return False, "replay detected (nonce reused)"
+
+        request_key = f"{node_id}:{request_id}"
+        if request_key in self.used_request_ids:
+            return False, "duplicate request_id"
+
+        if not self._allow_rate(node_id, now):
+            return False, "rate limit exceeded"
+
+        self.used_nonces[nonce_key] = now
+        self.nonce_seen_order.append((nonce_key, now))
+        self.used_request_ids[request_key] = now
+        self.request_seen_order.append((request_key, now))
+        self._enforce_seen_entry_limit()
         return True, "ok"
 
-    def _cleanup_nonces(self, now: int) -> None:
+    @staticmethod
+    def _is_hex_string(value: str, expected_len: int) -> bool:
+        return len(value) == expected_len and all(ch in HEX_CHARS for ch in value)
+
+    def _cleanup_seen_entries(self, now: int) -> None:
         expire_before = now - self.max_skew_seconds
-        stale = [k for k, seen in self.used_nonces.items() if seen < expire_before]
-        for key in stale:
-            self.used_nonces.pop(key, None)
+        while self.nonce_seen_order and self.nonce_seen_order[0][1] < expire_before:
+            nonce_key, seen = self.nonce_seen_order.popleft()
+            if self.used_nonces.get(nonce_key) == seen:
+                self.used_nonces.pop(nonce_key, None)
+        while self.request_seen_order and self.request_seen_order[0][1] < expire_before:
+            request_key, seen = self.request_seen_order.popleft()
+            if self.used_request_ids.get(request_key) == seen:
+                self.used_request_ids.pop(request_key, None)
+
+    def _enforce_seen_entry_limit(self) -> None:
+        while len(self.nonce_seen_order) > self.max_seen_entries:
+            nonce_key, seen = self.nonce_seen_order.popleft()
+            if self.used_nonces.get(nonce_key) == seen:
+                self.used_nonces.pop(nonce_key, None)
+        while len(self.request_seen_order) > self.max_seen_entries:
+            request_key, seen = self.request_seen_order.popleft()
+            if self.used_request_ids.get(request_key) == seen:
+                self.used_request_ids.pop(request_key, None)
 
     def _allow_rate(self, node_id: str, now: int) -> bool:
         queue = self.node_request_times[node_id]
@@ -641,18 +811,42 @@ class TranslationNetwork:
         ]
 
         self.secret_from_env = False
+        self.secret_strength_passed = False
         secret_env = os.getenv("NETWORK_SHARED_SECRET", "").strip()
         if secret_env and len(secret_env.encode("utf-8")) >= 32:
             secret_bytes = secret_env.encode("utf-8")
             self.secret_from_env = True
+            self.secret_strength_passed = self._is_strong_shared_secret(secret_env)
         elif strict_secret_from_env:
             raise ValueError("NETWORK_SHARED_SECRET must be set and >= 32 bytes for strict mode.")
         else:
             secret_bytes = secrets.token_bytes(32)
 
-        self.security = RequestSecurity(secret_bytes)
+        self.security = RequestSecurity(
+            secret_bytes,
+            allowed_nodes={node.node_id for node in self.nodes},
+        )
         self.slash_points: Dict[str, int] = defaultdict(int)
         self.upgrades: Dict[str, UpgradeProposal] = {}
+
+    @staticmethod
+    def _is_strong_shared_secret(secret: str) -> bool:
+        candidate = secret.strip()
+        if len(candidate.encode("utf-8")) < 32:
+            return False
+        normalized = "".join(ch for ch in candidate.lower() if ch.isalnum())
+        weak_markers = ["password", "secret", "changeme", "default", "example", "test", "demo"]
+        if any(marker in normalized for marker in weak_markers):
+            return False
+        if len(set(candidate)) < 10:
+            return False
+        char_classes = [
+            any(ch.islower() for ch in candidate),
+            any(ch.isupper() for ch in candidate),
+            any(ch.isdigit() for ch in candidate),
+            any(not ch.isalnum() for ch in candidate),
+        ]
+        return sum(char_classes) >= 3
 
     @staticmethod
     def canonical_translate_ko_to_en(text: str) -> str:
@@ -674,7 +868,7 @@ class TranslationNetwork:
         self.launch_gate.set_check("stress_test_passed", self.simulate_stress_test(max_requests=100))
 
         if production_mode:
-            key_management = self.secret_from_env
+            key_management = self.secret_from_env and self.secret_strength_passed
             account_registry = self.identities.production_ready()
         else:
             key_management = len(self.security.shared_secret) >= 32
@@ -902,6 +1096,17 @@ class SecurityQAAgent(QAAgent):
     def run(self) -> QAAgentResult:
         net = self.network_factory()
 
+        def resign(envelope: Dict[str, Any]) -> None:
+            envelope["signature"] = net.security.sign(
+                {
+                    "request_id": envelope["request_id"],
+                    "node_id": envelope["node_id"],
+                    "source_text": envelope["source_text"],
+                    "nonce": envelope["nonce"],
+                    "timestamp": envelope["timestamp"],
+                }
+            )
+
         valid = net.security.build_envelope("qa-security-valid", "node-sea-1", "안녕하세요, 회의에 참석해 주셔서 감사합니다.")
         net.process_request(valid)
 
@@ -923,16 +1128,72 @@ class SecurityQAAgent(QAAgent):
             signature_blocked = "signature" in str(exc)
             signature_reason = str(exc)
 
-        passed = replay_blocked and signature_blocked
+        unknown_node = net.security.build_envelope("qa-security-unknown-node", "node-unknown-9", "안녕하세요, 회의에 참석해 주셔서 감사합니다.")
+        unknown_node_blocked = False
+        unknown_node_reason = ""
+        try:
+            net.process_request(unknown_node)
+        except ValueError as exc:
+            unknown_node_blocked = "unknown node_id" in str(exc)
+            unknown_node_reason = str(exc)
+
+        bad_nonce = net.security.build_envelope("qa-security-bad-nonce", "node-sea-1", "질문이 있으면 언제든지 말씀해 주세요.")
+        bad_nonce["nonce"] = "nonce-not-hex"
+        resign(bad_nonce)
+        nonce_blocked = False
+        nonce_reason = ""
+        try:
+            net.process_request(bad_nonce)
+        except ValueError as exc:
+            nonce_blocked = "invalid nonce" in str(exc)
+            nonce_reason = str(exc)
+
+        oversized = net.security.build_envelope("qa-security-large", "node-sea-1", "a" * 5000)
+        resign(oversized)
+        oversized_blocked = False
+        oversized_reason = ""
+        try:
+            net.process_request(oversized)
+        except ValueError as exc:
+            oversized_blocked = "source_text too large" in str(exc)
+            oversized_reason = str(exc)
+
+        first = net.security.build_envelope("qa-security-dup-req", "node-sea-1", "안녕하세요, 회의에 참석해 주셔서 감사합니다.")
+        net.process_request(first)
+        duplicate = net.security.build_envelope("qa-security-dup-req", "node-sea-1", "안녕하세요, 회의에 참석해 주셔서 감사합니다.")
+        duplicate_request_blocked = False
+        duplicate_request_reason = ""
+        try:
+            net.process_request(duplicate)
+        except ValueError as exc:
+            duplicate_request_blocked = "duplicate request_id" in str(exc)
+            duplicate_request_reason = str(exc)
+
+        passed = (
+            replay_blocked
+            and signature_blocked
+            and unknown_node_blocked
+            and nonce_blocked
+            and oversized_blocked
+            and duplicate_request_blocked
+        )
         return QAAgentResult(
             agent_id=self.agent_id,
             passed=passed,
-            summary="Replay and signature tampering must be rejected.",
+            summary="Replay, signature tampering, malformed payloads, and unknown nodes must be rejected.",
             evidence={
                 "replay_blocked": replay_blocked,
                 "replay_reason": replay_reason,
                 "signature_blocked": signature_blocked,
                 "signature_reason": signature_reason,
+                "unknown_node_blocked": unknown_node_blocked,
+                "unknown_node_reason": unknown_node_reason,
+                "nonce_blocked": nonce_blocked,
+                "nonce_reason": nonce_reason,
+                "oversized_blocked": oversized_blocked,
+                "oversized_reason": oversized_reason,
+                "duplicate_request_blocked": duplicate_request_blocked,
+                "duplicate_request_reason": duplicate_request_reason,
                 "slash_points": dict(net.slash_points),
             },
         )

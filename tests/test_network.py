@@ -34,9 +34,9 @@ class TestLaunchGate(unittest.TestCase):
     def test_production_checks_pass_with_manual_env(self) -> None:
         env = {
             "OWNER_ID": "owner-prod-1",
-            "NETWORK_SHARED_SECRET": "this_is_a_minimum_32_bytes_secret_value_123456",
+            "NETWORK_SHARED_SECRET": "A9x#4mB2qL7zT1vK8nR3pW6yH0dC5fJ!",
             "PRIVATE_RPC_URL": "https://private.rpc.local",
-            "PRIVATE_API_TOKEN": "private_token_local_value",
+            "PRIVATE_API_TOKEN": "Priv_token_local_value_123",
             "WALLET_NODE_SEA_1": "wallet_node_sea_1_unique",
             "WALLET_NODE_TYO_2": "wallet_node_tyo_2_unique",
             "WALLET_NODE_SGP_3": "wallet_node_sgp_3_unique",
@@ -54,6 +54,75 @@ class TestLaunchGate(unittest.TestCase):
             net.open_mainnet()
             self.assertTrue(net.launch_gate.opened)
 
+    def test_production_checks_fail_with_placeholder_values(self) -> None:
+        env = {
+            "OWNER_ID": "CHANGE_ME_OWNER_ID",
+            "NETWORK_SHARED_SECRET": "CHANGE_ME_WITH_MINIMUM_32_CHAR_SECRET_VALUE",
+            "PRIVATE_RPC_URL": "https://change-me-private-rpc.example",
+            "PRIVATE_API_TOKEN": "CHANGE_ME_PRIVATE_API_TOKEN",
+            "WALLET_NODE_SEA_1": "change_me_wallet_node_sea_1_unique",
+            "WALLET_NODE_TYO_2": "change_me_wallet_node_tyo_2_unique",
+            "WALLET_NODE_SGP_3": "change_me_wallet_node_sgp_3_unique",
+            "WALLET_NODE_FRA_4": "change_me_wallet_node_fra_4_unique",
+            "WALLET_NODE_IAD_5": "change_me_wallet_node_iad_5_unique",
+            "WALLET_FOUNDER_TREASURY": "change_me_wallet_founder_treasury_unique",
+            "WALLET_ECOSYSTEM_TREASURY": "change_me_wallet_ecosystem_treasury_unique",
+            "WALLET_SECURITY_TREASURY": "change_me_wallet_security_treasury_unique",
+            "WALLET_COMMUNITY_TREASURY": "change_me_wallet_community_treasury_unique",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            net = TranslationNetwork()
+            checks = net.run_preflight_checks(security_scan_passed=True, production_mode=True)
+            self.assertFalse(checks["account_registry_passed"])
+            with self.assertRaises(RuntimeError):
+                net.open_mainnet()
+
+    def test_production_checks_fail_with_weak_shared_secret(self) -> None:
+        env = {
+            "OWNER_ID": "owner-prod-1",
+            "NETWORK_SHARED_SECRET": "secretsecretsecretsecretsecretsecret12",
+            "PRIVATE_RPC_URL": "https://private.rpc.local",
+            "PRIVATE_API_TOKEN": "Priv_token_local_value_123",
+            "WALLET_NODE_SEA_1": "wallet_node_sea_1_unique",
+            "WALLET_NODE_TYO_2": "wallet_node_tyo_2_unique",
+            "WALLET_NODE_SGP_3": "wallet_node_sgp_3_unique",
+            "WALLET_NODE_FRA_4": "wallet_node_fra_4_unique",
+            "WALLET_NODE_IAD_5": "wallet_node_iad_5_unique",
+            "WALLET_FOUNDER_TREASURY": "wallet_founder_treasury_unique",
+            "WALLET_ECOSYSTEM_TREASURY": "wallet_ecosystem_treasury_unique",
+            "WALLET_SECURITY_TREASURY": "wallet_security_treasury_unique",
+            "WALLET_COMMUNITY_TREASURY": "wallet_community_treasury_unique",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            net = TranslationNetwork()
+            checks = net.run_preflight_checks(security_scan_passed=True, production_mode=True)
+            self.assertFalse(checks["key_management_passed"])
+            with self.assertRaises(RuntimeError):
+                net.open_mainnet()
+
+    def test_production_checks_fail_with_insecure_rpc_url(self) -> None:
+        env = {
+            "OWNER_ID": "owner-prod-1",
+            "NETWORK_SHARED_SECRET": "A9x#4mB2qL7zT1vK8nR3pW6yH0dC5fJ!",
+            "PRIVATE_RPC_URL": "http://private.rpc.local",
+            "PRIVATE_API_TOKEN": "Priv_token_local_value_123",
+            "WALLET_NODE_SEA_1": "wallet_node_sea_1_unique",
+            "WALLET_NODE_TYO_2": "wallet_node_tyo_2_unique",
+            "WALLET_NODE_SGP_3": "wallet_node_sgp_3_unique",
+            "WALLET_NODE_FRA_4": "wallet_node_fra_4_unique",
+            "WALLET_NODE_IAD_5": "wallet_node_iad_5_unique",
+            "WALLET_FOUNDER_TREASURY": "wallet_founder_treasury_unique",
+            "WALLET_ECOSYSTEM_TREASURY": "wallet_ecosystem_treasury_unique",
+            "WALLET_SECURITY_TREASURY": "wallet_security_treasury_unique",
+            "WALLET_COMMUNITY_TREASURY": "wallet_community_treasury_unique",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            net = TranslationNetwork()
+            checks = net.run_preflight_checks(security_scan_passed=True, production_mode=True)
+            self.assertFalse(checks["account_registry_passed"])
+            with self.assertRaises(RuntimeError):
+                net.open_mainnet()
+
 
 class TestSecurity(unittest.TestCase):
     def test_replay_attack_is_blocked(self) -> None:
@@ -66,6 +135,63 @@ class TestSecurity(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             net.process_request(env)
+
+    def test_unknown_node_is_blocked(self) -> None:
+        net = TranslationNetwork()
+        net.run_preflight_checks(security_scan_passed=True, production_mode=False)
+        net.open_mainnet()
+
+        env = net.security.build_envelope("unknown-node-test", "node-evil-9", "안녕하세요, 회의에 참석해 주셔서 감사합니다.")
+        with self.assertRaisesRegex(ValueError, "unknown node_id"):
+            net.process_request(env)
+
+    def test_invalid_nonce_format_is_blocked(self) -> None:
+        net = TranslationNetwork()
+        net.run_preflight_checks(security_scan_passed=True, production_mode=False)
+        net.open_mainnet()
+
+        env = net.security.build_envelope("nonce-format-test", "node-sea-1", "질문이 있으면 언제든지 말씀해 주세요.")
+        env["nonce"] = "nonce-not-hex"
+        env["signature"] = net.security.sign(
+            {
+                "request_id": env["request_id"],
+                "node_id": env["node_id"],
+                "source_text": env["source_text"],
+                "nonce": env["nonce"],
+                "timestamp": env["timestamp"],
+            }
+        )
+        with self.assertRaisesRegex(ValueError, "invalid nonce"):
+            net.process_request(env)
+
+    def test_oversized_payload_is_blocked(self) -> None:
+        net = TranslationNetwork()
+        net.run_preflight_checks(security_scan_passed=True, production_mode=False)
+        net.open_mainnet()
+
+        env = net.security.build_envelope("oversized-source", "node-sea-1", "a" * 5000)
+        env["signature"] = net.security.sign(
+            {
+                "request_id": env["request_id"],
+                "node_id": env["node_id"],
+                "source_text": env["source_text"],
+                "nonce": env["nonce"],
+                "timestamp": env["timestamp"],
+            }
+        )
+        with self.assertRaisesRegex(ValueError, "source_text too large"):
+            net.process_request(env)
+
+    def test_duplicate_request_id_is_blocked(self) -> None:
+        net = TranslationNetwork()
+        net.run_preflight_checks(security_scan_passed=True, production_mode=False)
+        net.open_mainnet()
+
+        first = net.security.build_envelope("dup-request-id", "node-sea-1", "안녕하세요, 회의에 참석해 주셔서 감사합니다.")
+        second = net.security.build_envelope("dup-request-id", "node-sea-1", "안녕하세요, 회의에 참석해 주셔서 감사합니다.")
+        net.process_request(first)
+        with self.assertRaisesRegex(ValueError, "duplicate request_id"):
+            net.process_request(second)
 
 
 class TestQATeam(unittest.TestCase):
@@ -101,6 +227,21 @@ class TestUnstoppableLaunchSentinel(unittest.TestCase):
             sentinel = UnstoppableLaunchSentinel(state_path=state_path, owner_id="owner-main")
             with self.assertRaises(PermissionError):
                 sentinel.arm("intruder")
+
+    def test_owner_mismatch_resets_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            state_path = os.path.join(tmp_dir, "launch_state.json")
+            original = UnstoppableLaunchSentinel(state_path=state_path, owner_id="owner-main")
+            original.arm("owner-main")
+            original.record_execution("runner-other")
+
+            replaced = UnstoppableLaunchSentinel(state_path=state_path, owner_id="owner-new")
+            snapshot = replaced.snapshot()
+            self.assertEqual(snapshot["owner_id"], "owner-new")
+            self.assertFalse(snapshot["armed"])
+            self.assertFalse(snapshot["unstoppable_started"])
+            self.assertEqual(snapshot["total_runs"], 0)
+            self.assertEqual(snapshot["start_attempts"], 0)
 
 
 if __name__ == "__main__":
