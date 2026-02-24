@@ -8,6 +8,7 @@ This repository was completed through **ChatGPT Codex automation** with user-dir
   
 Verification details:
 - [Codex Automation Verification](docs/CODEX_AUTOMATION_VERIFICATION.md)
+- [Network Status](docs/NETWORK_STATUS.md)
 
 ## What This Project Is
 
@@ -111,6 +112,18 @@ python3 scripts/sanitize_for_git_open.py --root .
 ```bash
 python3 -m unittest discover -s tests -v
 ```
+
+## Current Network Status (Agent)
+
+Generate an easy report of current network state:
+
+```bash
+python3 scripts/network_status_agent.py --production-checks
+```
+
+Outputs:
+- `docs/NETWORK_STATUS.md`
+- `docs/NETWORK_STATUS.json`
 
 ## License
 

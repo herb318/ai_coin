@@ -1,0 +1,93 @@
+{
+  "generated_at_utc": "2026-02-24T13:58:26.818702+00:00",
+  "mode": "network-status-agent",
+  "production_checks": true,
+  "network_size_nodes": 5,
+  "avg_winner_latency_ms": 45.6,
+  "preflight_checks": {
+    "security_scan_passed": true,
+    "economic_invariant_passed": true,
+    "consensus_quorum_passed": true,
+    "key_management_passed": true,
+    "stress_test_passed": true,
+    "account_registry_passed": true
+  },
+  "qa_overall_passed": true,
+  "qa_agent_count": 5,
+  "launch_state": {
+    "owner_id": "owner_prod_alpha",
+    "armed": false,
+    "unstoppable_started": false,
+    "successful_open": false,
+    "started_by_runner": "",
+    "started_at_utc": "",
+    "last_runner_id": "",
+    "last_run_at_utc": "",
+    "total_runs": 0,
+    "start_attempts": 0
+  },
+  "snapshot": {
+    "epoch": 5,
+    "model_version": "llm-shard-v1.0",
+    "minted_supply": "4807425.3741",
+    "max_supply": "10000000.0000",
+    "balances": {
+      "community_treasury": "400000.0000",
+      "ecosystem_treasury": "1601485.0748",
+      "founder_treasury": "0.0000",
+      "node-fra-4": "998.1850",
+      "node-iad-5": "925.3624",
+      "node-sea-1": "1294.3515",
+      "node-sgp-3": "1164.6489",
+      "node-tyo-2": "1186.4828",
+      "security_treasury": "600371.2687"
+    },
+    "launch_gate": {
+      "security_scan_passed": true,
+      "economic_invariant_passed": true,
+      "consensus_quorum_passed": true,
+      "key_management_passed": true,
+      "stress_test_passed": true,
+      "account_registry_passed": true
+    },
+    "mainnet_open": true,
+    "slash_points": {},
+    "ledger_entries": 5,
+    "owner_id": "owner_prod_alpha",
+    "wallets_redacted": {
+      "node-sea-1": "wallet..._1_a",
+      "node-tyo-2": "wallet..._2_b",
+      "node-sgp-3": "wallet..._3_c",
+      "node-fra-4": "wallet..._4_d",
+      "node-iad-5": "wallet..._5_e",
+      "founder_treasury": "wallet...ry_f",
+      "ecosystem_treasury": "wallet...ry_g",
+      "security_treasury": "wallet...ry_h",
+      "community_treasury": "wallet...ry_i"
+    },
+    "account_registry_ready": true,
+    "connection_configured": true
+  },
+  "top_node_balances": [
+    [
+      "node-sea-1",
+      "1294.3515"
+    ],
+    [
+      "node-tyo-2",
+      "1186.4828"
+    ],
+    [
+      "node-sgp-3",
+      "1164.6489"
+    ],
+    [
+      "node-fra-4",
+      "998.1850"
+    ],
+    [
+      "node-iad-5",
+      "925.3624"
+    ]
+  ]
+}
