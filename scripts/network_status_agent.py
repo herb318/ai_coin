@@ -90,6 +90,62 @@ def _history_entry(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _parse_float(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _history_trend(entries: List[Dict[str, Any]], recent_window: int = 20) -> Dict[str, Any]:
+    if not entries:
+        return {
+            "recent_window": recent_window,
+            "sample_size": 0,
+            "health_counts": {"OK": 0, "WARN": 0, "DEGRADED": 0},
+            "latest_health": "",
+            "previous_health": "",
+            "health_changed": False,
+            "avg_latency_delta_ms": 0.0,
+            "epoch_delta": 0,
+        }
+
+    recent = entries[-recent_window:] if recent_window > 0 else entries
+    health_counts = {"OK": 0, "WARN": 0, "DEGRADED": 0}
+    for item in recent:
+        health = str(item.get("health_level", "")).upper()
+        if health in health_counts:
+            health_counts[health] += 1
+
+    latest = recent[-1]
+    previous = recent[-2] if len(recent) >= 2 else {}
+    latest_latency = _parse_float(latest.get("avg_winner_latency_ms"))
+    previous_latency = _parse_float(previous.get("avg_winner_latency_ms"))
+    latency_delta = 0.0
+    if latest_latency is not None and previous_latency is not None:
+        latency_delta = round(latest_latency - previous_latency, 4)
+
+    epoch_delta = 0
+    latest_epoch = latest.get("epoch")
+    previous_epoch = previous.get("epoch")
+    if isinstance(latest_epoch, int) and isinstance(previous_epoch, int):
+        epoch_delta = latest_epoch - previous_epoch
+
+    latest_health = str(latest.get("health_level", ""))
+    previous_health = str(previous.get("health_level", ""))
+
+    return {
+        "recent_window": recent_window,
+        "sample_size": len(recent),
+        "health_counts": health_counts,
+        "latest_health": latest_health,
+        "previous_health": previous_health,
+        "health_changed": bool(previous and latest_health != previous_health),
+        "avg_latency_delta_ms": latency_delta,
+        "epoch_delta": epoch_delta,
+    }
+
+
 def _read_history(history_path: Path) -> List[Dict[str, Any]]:
     if not history_path.exists():
         return []
@@ -113,6 +169,7 @@ def append_history(
     payload: Dict[str, Any],
     max_entries: int = 500,
     recent_limit: int = 5,
+    trend_window: int = 20,
 ) -> Dict[str, Any]:
     entries = _read_history(history_path)
     entries.append(_history_entry(payload))
@@ -127,6 +184,7 @@ def append_history(
     return {
         "history_total_entries": len(entries),
         "recent_history": entries[-recent_limit:] if recent_limit > 0 else [],
+        "history_trend": _history_trend(entries, recent_window=trend_window),
     }
 
 
@@ -212,6 +270,7 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     status_reasons = payload.get("status_reasons", [])
     advisories = payload.get("advisories", [])
     recent_history = payload.get("recent_history", [])
+    history_trend = payload.get("history_trend", {})
     history_total_entries = payload.get("history_total_entries", 0)
     history_path = payload.get("history_path", "docs/NETWORK_HISTORY.jsonl")
     launch_error = payload.get("launch_error", "")
@@ -231,6 +290,7 @@ def render_markdown(payload: Dict[str, Any]) -> str:
         f"latency=`{item.get('avg_winner_latency_ms')}`"
         for item in recent_history
     ) or "- none"
+    trend_health_counts = history_trend.get("health_counts", {"OK": 0, "WARN": 0, "DEGRADED": 0})
     health = payload.get("health_level", "DEGRADED")
     balances = snapshot.get("balances", {})
 
@@ -275,6 +335,17 @@ Generated at: `{payload['generated_at_utc']}`
 - Total history entries: `{history_total_entries}`
 
 {recent_history_lines}
+
+## History Trend
+
+- Window size: `{history_trend.get('recent_window')}`
+- Sample size: `{history_trend.get('sample_size')}`
+- Health counts: `OK={trend_health_counts.get('OK')}, WARN={trend_health_counts.get('WARN')}, DEGRADED={trend_health_counts.get('DEGRADED')}`
+- Latest health: `{history_trend.get('latest_health')}`
+- Previous health: `{history_trend.get('previous_health')}`
+- Health changed: `{history_trend.get('health_changed')}`
+- Avg latency delta (latest-prev): `{history_trend.get('avg_latency_delta_ms')} ms`
+- Epoch delta (latest-prev): `{history_trend.get('epoch_delta')}`
 
 ## Launch State
 
@@ -326,6 +397,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-json", default="docs/NETWORK_STATUS.json")
     parser.add_argument("--history-path", default="docs/NETWORK_HISTORY.jsonl")
     parser.add_argument("--history-max-entries", type=int, default=500)
+    parser.add_argument("--history-trend-window", type=int, default=20)
     return parser.parse_args()
 
 
@@ -348,10 +420,12 @@ def main() -> None:
         history_path=history_path,
         payload=payload,
         max_entries=max(0, args.history_max_entries),
+        trend_window=max(1, args.history_trend_window),
     )
     payload["history_path"] = str(history_path)
     payload["history_total_entries"] = history_meta["history_total_entries"]
     payload["recent_history"] = history_meta["recent_history"]
+    payload["history_trend"] = history_meta["history_trend"]
 
     markdown = render_markdown(payload)
     out_md.write_text(markdown, encoding="utf-8")

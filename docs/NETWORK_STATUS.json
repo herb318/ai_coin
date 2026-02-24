@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-02-24T14:39:45.490422+00:00",
+  "generated_at_utc": "2026-02-24T14:42:41.422634+00:00",
   "mode": "network-status-agent",
   "protocol_name": "Distributed Proof-of-Useful-Inference Network",
   "protocol_id": "dpuin-protocol",
@@ -113,7 +113,7 @@
     ]
   ],
   "history_path": "docs/NETWORK_HISTORY.jsonl",
-  "history_total_entries": 1,
+  "history_total_entries": 2,
   "recent_history": [
     {
       "generated_at_utc": "2026-02-24T14:39:45.490422+00:00",
@@ -130,6 +130,36 @@
       "advisories": [
         "production_readiness_false"
       ]
+    },
+    {
+      "generated_at_utc": "2026-02-24T14:42:41.422634+00:00",
+      "health_level": "WARN",
+      "status_ok": true,
+      "production_checks": false,
+      "qa_overall_passed": true,
+      "network_size_nodes": 5,
+      "avg_winner_latency_ms": 45.6,
+      "requests_executed": 5,
+      "epoch": 5,
+      "minted_supply": "4807425.3741",
+      "status_reasons": [],
+      "advisories": [
+        "production_readiness_false"
+      ]
     }
-  ]
+  ],
+  "history_trend": {
+    "recent_window": 20,
+    "sample_size": 2,
+    "health_counts": {
+      "OK": 0,
+      "WARN": 2,
+      "DEGRADED": 0
+    },
+    "latest_health": "WARN",
+    "previous_health": "WARN",
+    "health_changed": false,
+    "avg_latency_delta_ms": 0.0,
+    "epoch_delta": 0
+  }
 }

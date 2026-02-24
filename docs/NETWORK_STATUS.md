@@ -1,6 +1,6 @@
 # DPUIN Network Status
 
-Generated at: `2026-02-24T14:39:45.490422+00:00`
+Generated at: `2026-02-24T14:42:41.422634+00:00`
 
 ## Summary
 
@@ -41,9 +41,21 @@ Generated at: `2026-02-24T14:39:45.490422+00:00`
 ## Recent History
 
 - History file: `docs/NETWORK_HISTORY.jsonl`
-- Total history entries: `1`
+- Total history entries: `2`
 
 - `2026-02-24T14:39:45.490422+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
+- `2026-02-24T14:42:41.422634+00:00` | health=`WARN` | epoch=`5` | minted=`4807425.3741` | latency=`45.6`
+
+## History Trend
+
+- Window size: `20`
+- Sample size: `2`
+- Health counts: `OK=0, WARN=2, DEGRADED=0`
+- Latest health: `WARN`
+- Previous health: `WARN`
+- Health changed: `False`
+- Avg latency delta (latest-prev): `0.0 ms`
+- Epoch delta (latest-prev): `0`
 
 ## Launch State
 

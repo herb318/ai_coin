@@ -152,6 +152,7 @@ Health fields in JSON:
 - `production_readiness.ready`: strict production readiness result
 - `production_readiness.checks`: strict production check breakdown
 - `recent_history`: latest history entries
+- `history_trend`: trend summary from recent history window
 - `launch_error` / `qa_error`: failure details when degraded
 
 ## Full Auto Verification + Publish

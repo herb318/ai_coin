@@ -56,6 +56,37 @@ class TestStatusHistory(unittest.TestCase):
             parsed = [json.loads(line) for line in history_path.read_text(encoding="utf-8").splitlines() if line.strip()]
             self.assertEqual(len(parsed), 3)
 
+    def test_append_history_exposes_trend_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            history_path = Path(tmp_dir) / "NETWORK_HISTORY.jsonl"
+            p1 = _payload(1)
+            p2 = _payload(2)
+            p3 = _payload(3)
+            p1["health_level"] = "WARN"
+            p2["health_level"] = "OK"
+            p3["health_level"] = "DEGRADED"
+            p1["avg_winner_latency_ms"] = 50.0
+            p2["avg_winner_latency_ms"] = 47.5
+            p3["avg_winner_latency_ms"] = 49.0
+            p3["status_ok"] = False
+            p3["status_reasons"] = ["qa_failed"]
+            p3["advisories"] = []
+
+            append_history(history_path=history_path, payload=p1, max_entries=10, trend_window=10)
+            append_history(history_path=history_path, payload=p2, max_entries=10, trend_window=10)
+            meta = append_history(history_path=history_path, payload=p3, max_entries=10, trend_window=10)
+
+            trend = meta["history_trend"]
+            self.assertEqual(trend["sample_size"], 3)
+            self.assertEqual(trend["health_counts"]["WARN"], 1)
+            self.assertEqual(trend["health_counts"]["OK"], 1)
+            self.assertEqual(trend["health_counts"]["DEGRADED"], 1)
+            self.assertEqual(trend["latest_health"], "DEGRADED")
+            self.assertEqual(trend["previous_health"], "OK")
+            self.assertTrue(trend["health_changed"])
+            self.assertAlmostEqual(trend["avg_latency_delta_ms"], 1.5)
+            self.assertEqual(trend["epoch_delta"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
