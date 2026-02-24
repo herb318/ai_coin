@@ -2,6 +2,13 @@
 
 A decentralized AI network prototype where participants contribute useful inference and receive deterministic rewards.
 
+## Automation Provenance
+
+This repository was completed through **ChatGPT Codex automation** with user-directed requirements and local execution verification.
+  
+Verification details:
+- [Codex Automation Verification](docs/CODEX_AUTOMATION_VERIFICATION.md)
+
 ## What This Project Is
 
 - Open, evolving network AI simulation
