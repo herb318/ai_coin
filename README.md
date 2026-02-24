@@ -180,6 +180,7 @@ python3 scripts/auto_verify_publish.py --production-checks
 ```
 
 Behavior:
+- With `--production-checks`, auto publish validates status payload schema (mode/protocol/health/metrics/fingerprint/history metadata).
 - With `--production-checks`, auto publish aborts if `status_ok=false`.
 - With `--production-checks`, auto publish also aborts if `history_chain.valid=false`.
 - With `--production-checks`, auto publish aborts if `generated_at_utc` is invalid/missing or older than `--max-status-age-seconds` (default `900`).

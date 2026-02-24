@@ -11,6 +11,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+EXPECTED_MODE = "network-status-agent"
+EXPECTED_PROTOCOL_ID = "dpuin-protocol"
+ALLOWED_HEALTH_LEVELS = {"OK", "WARN", "DEGRADED"}
+
 
 def run(cmd: List[str], cwd: Path) -> str:
     print(f">> {shlex.join(cmd)}")
@@ -59,6 +63,72 @@ def parse_generated_at_utc(value: Any) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
+def _is_sha256_hex(value: Any) -> bool:
+    if not isinstance(value, str) or len(value) != 64:
+        return False
+    return all(ch in "0123456789abcdef" for ch in value.lower())
+
+
+def _is_non_negative_int(value: Any) -> bool:
+    return isinstance(value, int) and value >= 0
+
+
+def _is_non_negative_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and float(value) >= 0
+
+
+def validate_status_payload_schema(status_payload: Dict[str, Any]) -> Tuple[bool, str]:
+    mode = status_payload.get("mode")
+    if mode != EXPECTED_MODE:
+        return False, f"Invalid mode: expected {EXPECTED_MODE}, got {mode!r}"
+
+    protocol_id = status_payload.get("protocol_id")
+    if protocol_id != EXPECTED_PROTOCOL_ID:
+        return False, f"Invalid protocol_id: expected {EXPECTED_PROTOCOL_ID}, got {protocol_id!r}"
+
+    if not isinstance(status_payload.get("status_ok"), bool):
+        return False, "Invalid status_ok type: expected bool"
+
+    health_level = str(status_payload.get("health_level", "")).upper().strip()
+    if health_level not in ALLOWED_HEALTH_LEVELS:
+        return False, f"Invalid health_level: {health_level!r}"
+
+    if not _is_non_negative_int(status_payload.get("network_size_nodes")):
+        return False, "Invalid network_size_nodes: expected non-negative int"
+    if int(status_payload.get("network_size_nodes", 0)) < 3:
+        return False, "Invalid network_size_nodes: value must be >= 3"
+
+    if not _is_non_negative_int(status_payload.get("requests_executed")):
+        return False, "Invalid requests_executed: expected non-negative int"
+
+    if not _is_non_negative_number(status_payload.get("avg_winner_latency_ms")):
+        return False, "Invalid avg_winner_latency_ms: expected non-negative number"
+
+    if not isinstance(status_payload.get("qa_overall_passed"), bool):
+        return False, "Invalid qa_overall_passed type: expected bool"
+
+    if not _is_non_negative_int(status_payload.get("qa_agent_count")):
+        return False, "Invalid qa_agent_count: expected non-negative int"
+    if int(status_payload.get("qa_agent_count", 0)) < 1:
+        return False, "Invalid qa_agent_count: value must be >= 1"
+
+    status_fingerprint = status_payload.get("status_fingerprint")
+    if not _is_sha256_hex(status_fingerprint):
+        return False, "Invalid status_fingerprint: expected 64-char sha256 hex"
+
+    history_chain = status_payload.get("history_chain")
+    if history_chain is not None:
+        if not isinstance(history_chain, dict):
+            return False, "Invalid history_chain type: expected object"
+        tracked_entries = history_chain.get("tracked_entries", 0)
+        if not _is_non_negative_int(tracked_entries):
+            return False, "Invalid history_chain.tracked_entries: expected non-negative int"
+        if "valid" in history_chain and not isinstance(history_chain.get("valid"), bool):
+            return False, "Invalid history_chain.valid type: expected bool"
+
+    return True, ""
+
+
 def should_block_publish(
     status_payload: Dict[str, Any],
     production_checks: bool,
@@ -69,6 +139,14 @@ def should_block_publish(
 ) -> Tuple[bool, str]:
     if not production_checks or allow_failing_status:
         return False, ""
+    schema_ok, schema_reason = validate_status_payload_schema(status_payload)
+    if not schema_ok:
+        return (
+            True,
+            "Generated status payload schema validation failed under --production-checks. "
+            f"{schema_reason}. "
+            "Regenerate status report before publish.",
+        )
     now = now_utc or datetime.now(timezone.utc)
     max_age = max(0, int(max_status_age_seconds))
     generated_at = parse_generated_at_utc(status_payload.get("generated_at_utc"))
